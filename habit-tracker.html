@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Habit Tracker</title>
+<style>
+  :root{
+    --bg:#0f1115;
+    --panel:#171a21;
+    --panel-2:#1e222b;
+    --line:#2a2f3a;
+    --text:#e7eaf0;
+    --muted:#9aa3b2;
+    --accent:#4f8cff;
+    --good:#3ecf8e;
+    --today:#f4f6fb;
+    --shadow:0 8px 30px rgba(0,0,0,.35);
+    --card-shadow:0 2px 8px rgba(0,0,0,.28);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--text);
+    display:flex;min-height:100vh;
+  }
+  button{font-family:inherit;cursor:pointer}
+  input,select{font-family:inherit}
+
+  /* Sidebar */
+  .sidebar{
+    width:320px;min-width:320px;background:var(--panel);
+    border-right:1px solid var(--line);
+    box-shadow:6px 0 24px rgba(0,0,0,.25);
+    display:flex;flex-direction:column;height:100vh;position:sticky;top:0;
+  }
+  .brand{padding:20px 20px 14px;border-bottom:1px solid var(--line)}
+  .brand h1{font-size:19px;margin:0;letter-spacing:.3px}
+  .brand p{margin:4px 0 0;color:var(--muted);font-size:12.5px}
+  .sidebar-year{
+    padding:10px 20px;border-bottom:1px solid var(--line);
+    color:var(--muted);font-size:12.5px;font-weight:600;
+    display:flex;align-items:center;gap:8px;
+  }
+  .sidebar-year b{color:var(--text);font-size:14px}
+
+  .habit-list{overflow:auto;flex:1;padding:10px}
+  .habit-card{
+    background:var(--panel-2);border:1px solid var(--line);
+    border-radius:12px;padding:12px 12px;margin-bottom:10px;cursor:pointer;
+    transition:border-color .15s,transform .05s,box-shadow .15s;position:relative;
+    box-shadow:var(--card-shadow);
+  }
+  .habit-card:hover{border-color:#3a4152;box-shadow:var(--card-shadow),0 0 0 1px #3a4152}
+  .habit-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset,var(--card-shadow)}
+  .habit-card{cursor:grab}
+  .habit-card:active{cursor:grabbing}
+  .habit-card.dragging{opacity:.4}
+  .habit-card.drag-over-top{box-shadow:inset 0 2px 0 var(--accent)}
+  .habit-card.drag-over-bottom{box-shadow:inset 0 -2px 0 var(--accent)}
+  .habit-top{display:flex;align-items:center;gap:9px}
+  .dot{width:12px;height:12px;border-radius:50%;flex:none}
+  .habit-name{font-weight:600;font-size:14.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .habit-count{color:var(--muted);font-size:12px;margin-top:8px}
+  .bar{height:7px;border-radius:5px;background:#0c0e12;margin-top:6px;overflow:hidden}
+  .bar > span{display:block;height:100%;border-radius:5px;transition:width .3s}
+
+  .sidebar-foot{padding:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+  .btn{
+    border:1px solid var(--line);background:var(--panel-2);color:var(--text);
+    padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:600;
+    display:flex;align-items:center;justify-content:center;gap:7px;
+    box-shadow:var(--card-shadow);
+  }
+  .btn:hover{border-color:#3a4152}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 2px 10px rgba(79,140,255,.35)}
+  .btn.primary:hover{filter:brightness(1.05)}
+  .btn-row{display:flex;gap:8px}
+  .btn-row .btn{flex:1}
+
+  /* Main */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:auto}
+  .topbar{
+    display:flex;align-items:center;gap:14px;padding:18px 26px;border-bottom:1px solid var(--line);
+    position:sticky;top:0;background:var(--bg);z-index:5;flex-wrap:wrap;
+  }
+  .topbar .title{font-size:20px;font-weight:700;display:flex;align-items:center;gap:10px}
+  .spacer{flex:1}
+  .year-nav{display:flex;align-items:center;gap:6px}
+  .year-nav button{
+    width:34px;height:34px;border-radius:9px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--text);font-size:16px;line-height:1;
+  }
+  .year-nav button:hover{border-color:#3a4152}
+  .year-nav .yr{font-weight:700;font-size:17px;min-width:64px;text-align:center}
+
+  .goal-wrap{padding:20px 26px 6px;position:relative;overflow:hidden}
+  .goal-wrap::before{
+    content:"";position:absolute;top:-70px;left:-70px;width:280px;height:280px;
+    background:var(--glow,transparent);border-radius:50%;filter:blur(50px);
+    opacity:.28;pointer-events:none;z-index:0;
+  }
+  .goal-wrap > *{position:relative;z-index:1}
+  .goal-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .goal-head .big{font-size:15px;color:var(--muted)}
+  .goal-head .big b{color:var(--text);font-size:22px}
+  .goal-bar{height:12px;border-radius:7px;background:var(--panel-2);margin-top:12px;overflow:hidden;border:1px solid var(--line)}
+  .goal-bar > span{display:block;height:100%;transition:width .35s}
+  .goal-pct{color:var(--muted);font-size:12.5px;margin-top:6px}
+  .streak-badge{
+    display:inline-flex;align-items:center;gap:5px;background:var(--panel-2);
+    border:1px solid var(--line);border-radius:9px;padding:4px 10px;font-size:13px;font-weight:600;
+  }
+  .streak-mini{color:var(--muted);font-weight:700;margin-left:6px}
+
+  /* Calendar */
+  .cal-wrap{padding:16px 26px 60px;overflow-x:auto}
+  .cal-grid{
+    display:grid;grid-template-columns:46px repeat(31,minmax(0,1fr));
+    gap:4px;width:100%;max-width:1200px;align-items:stretch;
+  }
+  .day-label{
+    color:var(--muted);font-size:10.5px;font-weight:600;text-align:center;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .month-label{
+    color:var(--muted);font-size:12px;font-weight:700;text-align:right;padding-right:10px;
+    white-space:nowrap;display:flex;align-items:center;justify-content:flex-end;
+  }
+  .cell{
+    width:100%;aspect-ratio:1;border-radius:5px;background:var(--panel-2);
+    border:1px solid var(--line);cursor:pointer;padding:0;
+    transition:transform .05s, background-color .2s ease, border-color .2s ease;
+  }
+  .cell:hover{transform:scale(1.1);z-index:2;position:relative}
+  .cell.off{background:transparent;border-color:transparent;cursor:default}
+  .cell.off:hover{transform:none}
+  .cell.today{outline:2px solid var(--today);outline-offset:1px}
+  .cell.done{border-color:transparent}
+  @keyframes cellPop{ 0%{transform:scale(1)} 45%{transform:scale(1.22)} 100%{transform:scale(1)} }
+  .cell.pop{animation:cellPop .26s ease}
+  .legend{display:flex;gap:18px;color:var(--muted);font-size:12px;margin:14px 0 0;flex-wrap:wrap}
+  .legend .k{display:flex;align-items:center;gap:7px}
+  .legend .sw{width:14px;height:14px;border-radius:4px;border:1px solid var(--line)}
+
+  .empty{padding:60px 26px;color:var(--muted);max-width:560px}
+  .empty h2{color:var(--text);font-weight:700}
+  .empty .btn{display:inline-flex;margin-top:14px;margin-right:10px}
+
+  /* Modal */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);width:100%;max-width:420px;padding:22px}
+  .modal h3{margin:0 0 16px;font-size:17px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px;font-weight:600}
+  .field input[type=text], .field input[type=number], .field select{
+    width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--text);font-size:14px;
+  }
+  .goal-mode{display:flex;gap:8px;margin-bottom:10px}
+  .goal-mode button{flex:1;padding:9px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);color:var(--muted);font-weight:600;font-size:12.5px}
+  .goal-mode button.sel{border-color:var(--accent);color:var(--text)}
+  .swatches{display:flex;gap:8px;flex-wrap:wrap}
+  .swatches button{width:30px;height:30px;border-radius:50%;border:2px solid transparent}
+  .color-custom{display:flex;align-items:center;gap:10px;margin-top:12px}
+  .color-custom input[type=color]{
+    -webkit-appearance:none;appearance:none;width:34px;height:34px;min-width:34px;
+    border-radius:50%;border:2px solid var(--line);padding:0;background:none;cursor:pointer;overflow:hidden;
+  }
+  .color-custom input[type=color]::-webkit-color-swatch-wrapper{padding:0;border-radius:50%}
+  .color-custom input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
+  .color-custom-label{font-size:12.5px;color:var(--muted)}
+  .swatches button.sel{border-color:#fff}
+  .modal-actions{display:flex;gap:10px;margin-top:18px}
+  .modal-actions .btn{flex:1}
+  .btn.ghost-danger{border-color:#3a2530;color:#ff8a8a;background:transparent}
+  .btn.danger-solid{background:#c0392b;border-color:#c0392b;color:#fff}
+
+  /* Eigener Best√§tigungsdialog (ersetzt confirm/alert des Browsers) */
+  .overlay.confirm{z-index:60}
+  .confirm .modal{max-width:360px}
+  .confirm p{margin:0 0 4px;font-size:14px;line-height:1.5;color:var(--text)}
+
+  /* Toast-Hinweise */
+  #toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    padding:11px 18px;border-radius:11px;font-size:13.5px;font-weight:600;
+    box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:100;
+    max-width:80vw;text-align:center;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* Print */
+  @media print{
+    body{display:block;background:#fff;color:#000}
+    .sidebar,.topbar .year-nav,.sidebar-foot,.no-print{display:none !important}
+    .main{height:auto;overflow:visible}
+    .topbar{border:none}
+    .cell{border:1px solid #bbb !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .cell.off{border-color:transparent !important}
+    .day-label, .month-label{color:#333}
+    .goal-bar,.cell{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .goal-bar > span, .cell.done{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+  @media (max-width:720px){
+    body{flex-direction:column}
+    .sidebar{width:100%;min-width:0;height:auto;position:relative}
+    .main{height:auto}
+  }
+</style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>Habit Tracker</h1>
+      <p>Deine Gewohnheiten, das ganze Jahr im Blick.</p>
+    </div>
+    <div class="sidebar-year">Habits f√ºr <b id="sidebarYear">2026</b></div>
+    <div class="habit-list" id="habitList"></div>
+    <div class="sidebar-foot">
+      <button class="btn primary" id="addBtn">Ôºã Neuer Habit</button>
+      <div class="btn-row">
+        <button class="btn" id="exportBtn" title="Alle Daten als Datei sichern">‚§ì Export</button>
+        <button class="btn" id="importBtn" title="Gesicherte Datei einlesen">‚§í Import</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json" style="display:none">
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="title" id="mainTitle">Willkommen</div>
+      <div class="spacer"></div>
+      <div class="year-nav no-print" id="yearNav">
+        <button id="prevYear">‚Äπ</button>
+        <span class="yr" id="yearLabel">2026</span>
+        <button id="nextYear">‚Ä∫</button>
+      </div>
+      <button class="btn no-print" id="editBtn" style="display:none">Bearbeiten</button>
+      <button class="btn no-print" id="printBtn" style="display:none">üñ® Drucken / PDF</button>
+    </div>
+
+    <div id="content"></div>
+  </main>
+
+  <!-- Modal -->
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h3 id="modalTitle">Neuer Habit</h3>
+      <div class="field">
+        <label>Name</label>
+        <input type="text" id="mName" placeholder="z.B. Sport, Lesen, 3 Liter Wasser" maxlength="60">
+      </div>
+      <div class="field">
+        <label id="goalLabel">Ziel</label>
+        <div class="goal-mode" id="goalMode">
+          <button data-mode="year" class="sel">Ganzes Jahr</button>
+          <button data-mode="custom">Eigene Zahl</button>
+        </div>
+        <input type="number" id="mTarget" min="1" max="366" value="100" style="display:none">
+        <div id="goalHint" style="color:var(--muted);font-size:12px">Ziel = alle Tage des Jahres (365 bzw. 366 im Schaltjahr).</div>
+      </div>
+      <div class="field">
+        <label>Farbe</label>
+        <div class="swatches" id="swatches"></div>
+        <div class="color-custom">
+          <input type="color" id="mColorPicker" title="Eigene Farbe w√§hlen">
+          <span class="color-custom-label">Eigene Farbe aus der Palette w√§hlen</span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost-danger" id="deleteBtn" style="display:none">L√∂schen</button>
+        <button class="btn" id="cancelBtn">Abbrechen</button>
+        <button class="btn primary" id="saveBtn">Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Eigener Best√§tigungsdialog -->
+  <div class="overlay confirm" id="confirmOverlay">
+    <div class="modal">
+      <p id="confirmText"></p>
+      <div class="modal-actions">
+        <button class="btn" id="confirmNo">Abbrechen</button>
+        <button class="btn danger-solid" id="confirmYes">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  const STORE_KEY = "habitTracker.v1";
+  const SELECTED_KEY = "habitTracker.selectedId";
+  const YEAR_KEY = "habitTracker.currentYear";
+  const COLORS = ["#4f8cff","#3ecf8e","#ff8a5b","#c77dff","#ffce54","#ff6b8a","#38d6c9","#a0d468"];
+  const MONTHS = ["Januar","Februar","M√§rz","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+  const MONTHS_SHORT = ["Jan","Feb","M√§r","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+
+  // Datenmodell: jeder Habit geh√∂rt zu genau EINEM Jahr.
+  // habit = { id, year, name, color, goalMode ("year"|"custom"), target, order, days:{ "y-m-d": true } }
+  // "order" bestimmt die Reihenfolge in der Sidebar, jeweils nur unter Habits desselben Jahres.
+  let state = load();
+  let currentYear = parseInt(localStorage.getItem(YEAR_KEY), 10) || new Date().getFullYear();
+  let selectedId = localStorage.getItem(SELECTED_KEY) || null;
+  let editingId = null;
+  let modalColor = COLORS[0];
+  let modalGoalMode = "year";
+  let lastClickedKey = null; // { habitId, key } -- Anker f√ºr Umschalt+Klick-Bereichsauswahl
+
+  // ---------- Date helpers ----------
+  function isLeap(y){ return (y%4===0 && y%100!==0) || y%400===0; }
+  function daysInMonth(y,m){ return [31, isLeap(y)?29:28,31,30,31,30,31,31,30,31,30,31][m]; }
+  function daysInYear(y){ return isLeap(y)?366:365; }
+  function key(y,m,d){ return y+"-"+m+"-"+d; }
+  function uid(){ return "h"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+  // ---------- Persistence & Migration ----------
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORE_KEY);
+      if(raw){
+        const d = JSON.parse(raw);
+        if(d && Array.isArray(d.habits)) return ensureOrder(migrate(d));
+      }
+    }catch(e){}
+    return { habits: [], created: Date.now() };
+  }
+  // Weist Habits ohne "order" (z.B. aus √§lteren Sicherungen) eine Reihenfolge
+  // zu, basierend auf ihrer bisherigen Position innerhalb desselben Jahres.
+  function ensureOrder(d){
+    const counters = {};
+    d.habits.forEach(h=>{
+      const next = counters[h.year] ?? 0;
+      if(typeof h.order !== "number") h.order = next;
+      counters[h.year] = Math.max(next, h.order+1);
+    });
+    return d;
+  }
+  // Migration √§lterer Formate (Habits, die noch √ºber mehrere Jahre liefen)
+  // in das Ein-Jahr-pro-Habit-Modell: pro betroffenem Jahr ein eigener Habit.
+  function migrate(d){
+    const nowYear = new Date().getFullYear();
+    const out = [];
+    d.habits.forEach(h=>{
+      if(typeof h.year === "number"){ out.push(h); return; } // aktuelles Format
+      const days = h.days || {};
+      const yearsSet = {};
+      for(const k in days){ if(days[k]) yearsSet[k.split("-")[0]] = true; }
+      if(h.names) Object.keys(h.names).forEach(y=>yearsSet[y]=true);
+      if(h.goals) Object.keys(h.goals).forEach(y=>yearsSet[y]=true);
+      let years = Object.keys(yearsSet).map(Number).sort((a,b)=>a-b);
+      if(!years.length) years=[nowYear];
+
+      const nameFor = (year)=>{
+        if(h.names){
+          if(h.names[year]) return h.names[year];
+          const ys = Object.keys(h.names).map(Number).sort((a,b)=>a-b);
+          let best=null; for(const y of ys){ if(y<=year) best=y; }
+          if(best===null && ys.length) best=ys[0];
+          if(best!==null) return h.names[best];
+        }
+        return h.name || "Unbenannt";
+      };
+      const goalFor = (year)=>{
+        if(h.goals){
+          if(h.goals[year]) return h.goals[year];
+          const ys = Object.keys(h.goals).map(Number).sort((a,b)=>a-b);
+          let best=null; for(const y of ys){ if(y<=year) best=y; }
+          if(best===null && ys.length) best=ys[0];
+          if(best!==null) return h.goals[best];
+        }
+        if(h.goalMode==="custom") return {mode:"custom", target:h.target||100};
+        return {mode:"year"};
+      };
+
+      years.forEach(year=>{
+        const g = goalFor(year);
+        const nh = {
+          id: uid()+year,
+          year: year,
+          name: nameFor(year),
+          color: h.color || COLORS[0],
+          goalMode: g.mode,
+          target: g.mode==="custom" ? (g.target||100) : daysInYear(year),
+          days: {},
+          created: h.created || Date.now()
+        };
+        const prefix = year+"-";
+        for(const k in days){ if(days[k] && k.indexOf(prefix)===0) nh.days[k]=true; }
+        out.push(nh);
+      });
+    });
+    d.habits = out;
+    return d;
+  }
+  function save(){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+    catch(e){ toast("Konnte nicht speichern: "+e.message); }
+  }
+
+  // ---------- Model helpers ----------
+  function habitsOfYear(y){ return state.habits.filter(h=>h.year===y).sort((a,b)=>(a.order??0)-(b.order??0)); }
+  function getHabit(id){ return state.habits.find(h=>h.id===id); }
+  function targetFor(h){ return h.goalMode==="custom" ? h.target : daysInYear(h.year); }
+  function doneCount(h){
+    let c=0; const days=h.days||{};
+    for(const k in days){ if(days[k]) c++; }
+    return c;
+  }
+  // Aktuelle Serie: l√§uft r√ºckw√§rts ab heute (oder gestern, falls heute noch
+  // nicht eingetragen ist) durch aufeinanderfolgende erledigte Tage. Ergibt nur
+  // f√ºr das tats√§chlich laufende Jahr einen sinnvollen Wert.
+  function currentStreak(h){
+    const realNow = new Date();
+    if(h.year !== realNow.getFullYear()) return 0;
+    const days = h.days||{};
+    const isDone = (d)=> !!days[key(d.getFullYear(), d.getMonth(), d.getDate())];
+    let cursor = new Date(realNow.getFullYear(), realNow.getMonth(), realNow.getDate());
+    if(!isDone(cursor)){
+      cursor.setDate(cursor.getDate()-1);
+      if(!isDone(cursor)) return 0;
+    }
+    let count=0;
+    while(isDone(cursor)){
+      count++;
+      cursor.setDate(cursor.getDate()-1);
+    }
+    return count;
+  }
+  function ensureSelection(){
+    const list = habitsOfYear(currentYear);
+    const sel = getHabit(selectedId);
+    if(!sel || sel.year!==currentYear){
+      selectedId = list.length ? list[0].id : null;
+    }
+    // Auswahl merken, damit nach Schlie√üen/Neu√∂ffnen wieder derselbe Habit
+    // (und nicht immer der erste in der Liste) angezeigt wird.
+    localStorage.setItem(SELECTED_KEY, selectedId || "");
+    localStorage.setItem(YEAR_KEY, String(currentYear));
+  }
+
+  // ---------- Rendering ----------
+  function renderSidebar(){
+    const list = document.getElementById("habitList");
+    // FLIP "First": Positionen der bestehenden Karten vor dem Neuaufbau merken
+    const prevRects = {};
+    list.querySelectorAll(".habit-card").forEach(c=>{ prevRects[c.dataset.id] = c.getBoundingClientRect(); });
+
+    document.getElementById("sidebarYear").textContent = currentYear;
+    list.innerHTML = "";
+    const habits = habitsOfYear(currentYear);
+    if(habits.length===0){
+      list.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:14px;text-align:center;line-height:1.5">Noch keine Habits f√ºr '+currentYear+'.<br>Lege unten einen neuen an.</div>';
+      return;
+    }
+    habits.forEach(h=>{
+      const done = doneCount(h);
+      const target = targetFor(h);
+      const pct = target>0 ? Math.min(100, Math.round(done/target*100)) : 0;
+      const streak = currentStreak(h);
+      const card = document.createElement("div");
+      card.className = "habit-card"+(h.id===selectedId?" active":"");
+      card.draggable = true;
+      card.dataset.id = h.id;
+      card.innerHTML =
+        '<div class="habit-top"><span class="dot" style="background:'+h.color+'"></span>'+
+        '<span class="habit-name">'+escapeHtml(h.name)+'</span></div>'+
+        '<div class="habit-count">'+done+' von '+target+' erf√ºllt ¬∑ '+pct+'%'+
+        (streak>0 ? '<span class="streak-mini">üî• '+streak+'</span>' : '')+'</div>'+
+        '<div class="bar"><span style="width:'+pct+'%;background:'+h.color+'"></span></div>';
+      card.addEventListener("click", ()=>{ if(!card.classList.contains("dragging")){ selectedId=h.id; renderAll(); } });
+      attachDragHandlers(card, h.id);
+      list.appendChild(card);
+    });
+
+    // FLIP "Last/Invert/Play": neue Karten optisch an ihre alte Position zur√ºckversetzen
+    // und dann weich zur echten Position animieren, statt hart zu springen.
+    list.querySelectorAll(".habit-card").forEach(c=>{
+      const prev = prevRects[c.dataset.id];
+      if(!prev) return;
+      const now = c.getBoundingClientRect();
+      const dy = prev.top - now.top;
+      if(Math.abs(dy) < 1) return;
+      c.style.transition = "none";
+      c.style.transform = "translateY("+dy+"px)";
+      requestAnimationFrame(()=>{
+        c.style.transition = "transform .25s ease";
+        c.style.transform = "";
+      });
+    });
+  }
+
+  // ---------- Drag & Drop (Reihenfolge in der Sidebar) ----------
+  let draggedId = null;
+  function attachDragHandlers(card, id){
+    card.addEventListener("dragstart", (e)=>{
+      draggedId = id;
+      card.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+    });
+    card.addEventListener("dragend", ()=>{
+      card.classList.remove("dragging");
+      draggedId = null;
+      document.querySelectorAll(".habit-card").forEach(c=>c.classList.remove("drag-over-top","drag-over-bottom"));
+    });
+    card.addEventListener("dragover", (e)=>{
+      if(!draggedId || draggedId===id) return;
+      e.preventDefault();
+      const rect = card.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < rect.height/2;
+      card.classList.toggle("drag-over-top", before);
+      card.classList.toggle("drag-over-bottom", !before);
+    });
+    card.addEventListener("dragleave", ()=>{
+      card.classList.remove("drag-over-top","drag-over-bottom");
+    });
+    card.addEventListener("drop", (e)=>{
+      e.preventDefault();
+      card.classList.remove("drag-over-top","drag-over-bottom");
+      if(!draggedId || draggedId===id) return;
+      const rect = card.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < rect.height/2;
+      reorderHabit(draggedId, id, before);
+    });
+  }
+  function reorderHabit(draggedId, targetId, before){
+    const list = habitsOfYear(currentYear).filter(h=>h.id!==draggedId);
+    const dragged = getHabit(draggedId);
+    const targetIdx = list.findIndex(h=>h.id===targetId);
+    const insertAt = before ? targetIdx : targetIdx+1;
+    list.splice(insertAt, 0, dragged);
+    list.forEach((h,idx)=>{ h.order = idx; });
+    save();
+    renderSidebar();
+  }
+
+  // ---------- Gezielte Updates ohne kompletten Re-render ----------
+  // (n√∂tig, damit die Farb-√úbergangs-Animation auf demselben DOM-Element spielt,
+  // statt bei jedem Klick durch ein frisch gebautes Element ersetzt zu werden)
+  function animateCellToggle(cell, done, color){
+    cell.classList.toggle("done", done);
+    cell.style.background = done ? color : "";
+    cell.classList.remove("pop");
+    void cell.offsetWidth; // Reflow erzwingen, damit die Animation bei schnellen Klicks neu startet
+    cell.classList.add("pop");
+  }
+  function updateMainStats(h){
+    const statDone = document.getElementById("statDone");
+    if(!statDone) return; // Hauptansicht zeigt gerade einen anderen Habit
+    const done = doneCount(h);
+    const target = targetFor(h);
+    const pct = target>0 ? Math.min(100, Math.round(done/target*100)) : 0;
+    const streak = currentStreak(h);
+    statDone.textContent = done;
+    document.getElementById("goalBarFill").style.width = pct+"%";
+    document.getElementById("goalPctText").textContent = pct+"% geschafft ¬∑ noch "+Math.max(0,target-done)+" Tage bis zum Ziel";
+    const badge = document.getElementById("streakBadge");
+    badge.style.display = streak>0 ? "inline-flex" : "none";
+    document.getElementById("streakVal").textContent = streak;
+  }
+  function updateSidebarCard(h){
+    const card = document.querySelector('.habit-card[data-id="'+h.id+'"]');
+    if(!card) return;
+    const done = doneCount(h);
+    const target = targetFor(h);
+    const pct = target>0 ? Math.min(100, Math.round(done/target*100)) : 0;
+    const streak = currentStreak(h);
+    card.querySelector(".habit-count").innerHTML =
+      done+" von "+target+" erf√ºllt ¬∑ "+pct+"%"+(streak>0 ? '<span class="streak-mini">üî• '+streak+'</span>' : "");
+    card.querySelector(".bar > span").style.width = pct+"%";
+  }
+  // Markiert alle Tage zwischen zwei Kalender-Keys (inklusive, unabh√§ngig von der
+  // Klickreihenfolge) als erledigt -- f√ºr Umschalt+Klick "ganzen Bereich abhaken".
+  function setRangeDone(h, keyA, keyB){
+    h.days = h.days || {};
+    const toDate = (k)=>{ const [y,m,d] = k.split("-").map(Number); return new Date(y,m,d); };
+    let a = toDate(keyA), b = toDate(keyB);
+    if(a > b){ const tmp=a; a=b; b=tmp; }
+    const cursor = new Date(a);
+    while(cursor <= b){
+      h.days[key(cursor.getFullYear(), cursor.getMonth(), cursor.getDate())] = true;
+      cursor.setDate(cursor.getDate()+1);
+    }
+  }
+
+  function renderMain(){
+    const content = document.getElementById("content");
+    const editBtn = document.getElementById("editBtn");
+    const printBtn = document.getElementById("printBtn");
+    const title = document.getElementById("mainTitle");
+    document.getElementById("yearLabel").textContent = currentYear;
+
+    const h = getHabit(selectedId);
+    if(!h){
+      editBtn.style.display="none"; printBtn.style.display="none";
+      title.textContent = currentYear;
+      const prevCount = habitsOfYear(currentYear-1).length;
+      let html = '<div class="empty"><h2>Noch keine Habits f√ºr '+currentYear+'</h2>'+
+        '<p>Lege links √ºber <b>Ôºã Neuer Habit</b> einen neuen Habit f√ºr dieses Jahr an. '+
+        'Jedes Jahr hat seine eigene, unabh√§ngige Habit-Liste.</p>';
+      if(prevCount>0){
+        html += '<p>Oder √ºbernimm deine '+prevCount+' Habits aus '+(currentYear-1)+
+          ' (Name, Farbe und Ziel, mit leerem Kalender):</p>'+
+          '<button class="btn primary" id="copyPrevBtn">‚§µ Habits aus '+(currentYear-1)+' √ºbernehmen</button>';
+      }
+      html += '<p style="margin-top:20px;font-size:12.5px">Deine Daten bleiben lokal auf diesem Ger√§t gespeichert. '+
+        'Sichere sie ab und zu √ºber <b>‚§ì Export</b>.</p></div>';
+      content.innerHTML = html;
+      const cp = document.getElementById("copyPrevBtn");
+      if(cp) cp.addEventListener("click", copyFromPrevYear);
+      return;
+    }
+
+    editBtn.style.display=""; printBtn.style.display="";
+    title.innerHTML = '<span class="dot" style="background:'+h.color+';width:16px;height:16px"></span>'+escapeHtml(h.name);
+
+    const done = doneCount(h);
+    const target = targetFor(h);
+    const pct = target>0 ? Math.min(100, Math.round(done/target*100)) : 0;
+    const streak = currentStreak(h);
+
+    let html = '<div class="goal-wrap" style="--glow:'+h.color+'">'+
+      '<div class="goal-head"><span class="big"><b id="statDone">'+done+'</b> von <b id="statTarget">'+target+'</b> Tagen erf√ºllt</span>'+
+      '<span class="streak-badge" id="streakBadge" style="display:'+(streak>0?'inline-flex':'none')+'">üî• <b id="streakVal">'+streak+'</b> Tage in Folge</span>'+
+      '<span class="big" style="margin-left:auto">'+currentYear+'</span></div>'+
+      '<div class="goal-bar"><span id="goalBarFill" style="width:'+pct+'%;background:'+h.color+'"></span></div>'+
+      '<div class="goal-pct" id="goalPctText">'+pct+'% geschafft ¬∑ noch '+Math.max(0,target-done)+' Tage bis zum Ziel</div>'+
+      '</div>';
+
+    html += '<div class="cal-wrap">'+buildCalendar(h)+
+      '<div class="legend">'+
+        '<span class="k"><span class="sw" style="background:'+h.color+';border-color:transparent"></span> erf√ºllt</span>'+
+        '<span class="k"><span class="sw"></span> offen</span>'+
+        '<span class="k"><span class="sw" style="outline:2px solid var(--today);outline-offset:-2px"></span> heute</span>'+
+        '<span class="k">Tipp: Tag anklicken zum Umschalten ¬∑ Umschalt+Klick f√ºr einen ganzen Bereich</span>'+
+      '</div></div>';
+    content.innerHTML = html;
+
+    content.querySelectorAll(".cell:not(.off)").forEach(cell=>{
+      cell.addEventListener("click", (e)=>{
+        const k = cell.getAttribute("data-k");
+        if(e.shiftKey && lastClickedKey && lastClickedKey.habitId===h.id){
+          setRangeDone(h, lastClickedKey.key, k);
+          save();
+          renderMain();
+          updateSidebarCard(h);
+          lastClickedKey = { habitId:h.id, key:k };
+          return;
+        }
+        h.days = h.days || {};
+        const nowDone = !h.days[k];
+        if(nowDone){ h.days[k] = true; } else { delete h.days[k]; }
+        save();
+        animateCellToggle(cell, nowDone, h.color);
+        updateMainStats(h);
+        updateSidebarCard(h);
+        lastClickedKey = { habitId:h.id, key:k };
+      });
+    });
+  }
+
+  function buildCalendar(h){
+    const year = h.year;
+    const today = new Date();
+    const tY=today.getFullYear(), tM=today.getMonth(), tD=today.getDate();
+    const days = h.days||{};
+    let t = '<div class="cal-grid"><div class="day-label"></div>';
+    for(let d=1; d<=31; d++){ t += '<div class="day-label">'+d+'</div>'; }
+    for(let m=0; m<12; m++){
+      t += '<div class="month-label" title="'+MONTHS[m]+'">'+MONTHS_SHORT[m]+'</div>';
+      const dim = daysInMonth(year,m);
+      for(let d=1; d<=31; d++){
+        if(d>dim){ t += '<div class="cell off"></div>'; continue; }
+        const k = key(year,m,d);
+        const done = !!days[k];
+        const isToday = (year===tY && m===tM && d===tD);
+        let cls = "cell"+(done?" done":"")+(isToday?" today":"");
+        const style = done ? 'style="background:'+h.color+'"' : '';
+        const tip = MONTHS_SHORT[m]+' '+d+', '+year;
+        t += '<div class="'+cls+'" '+style+' data-k="'+k+'" title="'+tip+'"></div>';
+      }
+    }
+    t += '</div>';
+    return t;
+  }
+
+  function renderAll(){ ensureSelection(); renderSidebar(); renderMain(); }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+  // ---------- Eigene Dialoge (statt confirm/alert, die z.T. blockiert werden) ----------
+  let confirmCb = null;
+  function askConfirm(message, yesLabel, cb){
+    document.getElementById("confirmText").textContent = message;
+    document.getElementById("confirmYes").textContent = yesLabel || "OK";
+    confirmCb = cb;
+    document.getElementById("confirmOverlay").classList.add("show");
+  }
+  function closeConfirm(){ document.getElementById("confirmOverlay").classList.remove("show"); confirmCb=null; }
+  document.getElementById("confirmYes").addEventListener("click",()=>{ const cb=confirmCb; closeConfirm(); if(cb) cb(); });
+  document.getElementById("confirmNo").addEventListener("click",closeConfirm);
+  document.getElementById("confirmOverlay").addEventListener("click",(e)=>{ if(e.target.id==="confirmOverlay") closeConfirm(); });
+
+  let toastTimer = null;
+  function toast(message, duration){
+    const t = document.getElementById("toast");
+    t.textContent = message;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>t.classList.remove("show"), duration||2600);
+  }
+
+  // ---------- Backup-Erinnerung ----------
+  // Da es keine Cloud-Sicherung gibt, erinnert die App gelegentlich ans Exportieren.
+  const EXPORT_KEY = "habitTracker.lastExport";
+  const REMINDER_DAYS = 14;
+  function maybeShowBackupReminder(){
+    if(!state.habits.length) return;
+    const last = parseInt(localStorage.getItem(EXPORT_KEY)||"0", 10);
+    if(!last){
+      toast("Tipp: Sichere deine Daten regelm√§√üig √ºber ‚§ì Export.", 5000);
+      return;
+    }
+    const daysSince = Math.floor((Date.now()-last)/86400000);
+    if(daysSince >= REMINDER_DAYS){
+      toast("Letztes Backup ist "+daysSince+" Tage her. Zeit f√ºr ‚§ì Export?", 5000);
+    }
+  }
+
+  // ---------- Vorjahr √ºbernehmen ----------
+  function copyFromPrevYear(){
+    const prev = habitsOfYear(currentYear-1);
+    if(!prev.length) return;
+    prev.forEach((p, idx)=>{
+      state.habits.push({
+        id: uid(),
+        year: currentYear,
+        name: p.name,
+        color: p.color,
+        goalMode: p.goalMode,
+        target: p.goalMode==="custom" ? p.target : daysInYear(currentYear),
+        order: idx,
+        days: {},
+        created: Date.now()
+      });
+    });
+    save();
+    selectedId = null;
+    renderAll();
+  }
+
+  // ---------- Modal ----------
+  function openModal(id){
+    editingId = id || null;
+    const h = id ? getHabit(id) : null;
+    document.getElementById("modalTitle").textContent = h ? "Habit bearbeiten ("+h.year+")" : "Neuer Habit f√ºr "+currentYear;
+    document.getElementById("mName").value = h ? h.name : "";
+    modalColor = h ? h.color : COLORS[habitsOfYear(currentYear).length % COLORS.length];
+    modalGoalMode = h ? h.goalMode : "year";
+    document.getElementById("mTarget").value = (h && h.goalMode==="custom") ? h.target : 100;
+    document.getElementById("deleteBtn").style.display = h ? "" : "none";
+    renderSwatches();
+    setGoalMode(modalGoalMode);
+    document.getElementById("overlay").classList.add("show");
+    setTimeout(()=>document.getElementById("mName").focus(),50);
+  }
+  function closeModal(){ document.getElementById("overlay").classList.remove("show"); editingId=null; }
+
+  function renderSwatches(){
+    const wrap = document.getElementById("swatches");
+    wrap.innerHTML="";
+    COLORS.forEach(c=>{
+      const b=document.createElement("button");
+      b.style.background=c;
+      if(c===modalColor) b.classList.add("sel");
+      b.addEventListener("click",()=>{ modalColor=c; renderSwatches(); });
+      wrap.appendChild(b);
+    });
+    document.getElementById("mColorPicker").value = modalColor;
+  }
+  function setGoalMode(mode){
+    modalGoalMode = mode;
+    document.querySelectorAll("#goalMode button").forEach(b=>{
+      b.classList.toggle("sel", b.getAttribute("data-mode")===mode);
+    });
+    document.getElementById("mTarget").style.display = mode==="custom" ? "" : "none";
+    document.getElementById("goalHint").style.display = mode==="custom" ? "none" : "";
+  }
+
+  function saveModal(){
+    const name = document.getElementById("mName").value.trim();
+    if(!name){ toast("Bitte gib einen Namen ein."); return; }
+    let target = parseInt(document.getElementById("mTarget").value,10);
+    if(modalGoalMode==="custom"){
+      if(!target || target<1){ toast("Bitte gib ein g√ºltiges Ziel (mindestens 1) ein."); return; }
+    }
+    if(editingId){
+      const h=getHabit(editingId);
+      h.name=name; h.color=modalColor; h.goalMode=modalGoalMode;
+      h.target = modalGoalMode==="custom" ? target : daysInYear(h.year);
+      selectedId = editingId;
+    }else{
+      const h={
+        id:uid(), year:currentYear, name, color:modalColor,
+        goalMode:modalGoalMode,
+        target: modalGoalMode==="custom" ? target : daysInYear(currentYear),
+        order: habitsOfYear(currentYear).length,
+        days:{}, created:Date.now()
+      };
+      state.habits.push(h);
+      selectedId=h.id;
+    }
+    save(); closeModal(); renderAll();
+  }
+  function deleteHabit(){
+    if(!editingId) return;
+    const h=getHabit(editingId);
+    const id = editingId;
+    askConfirm('Habit "'+h.name+'" ('+h.year+') mit allen Eintr√§gen wirklich l√∂schen?', 'L√∂schen', ()=>{
+      state.habits = state.habits.filter(x=>x.id!==id);
+      if(selectedId===id) selectedId = null;
+      save(); closeModal(); renderAll();
+      toast('Habit "'+h.name+'" gel√∂scht.');
+    });
+  }
+
+  // ---------- Export / Import ----------
+  function exportData(){
+    const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    const d=new Date();
+    const stamp = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    a.href=url; a.download="habit-tracker-backup-"+stamp+".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    localStorage.setItem(EXPORT_KEY, String(Date.now()));
+  }
+  function importData(file){
+    const reader=new FileReader();
+    reader.onload=function(){
+      try{
+        const d=JSON.parse(reader.result);
+        if(!d || !Array.isArray(d.habits)) throw new Error("Ung√ºltiges Format");
+        askConfirm("Import ersetzt deine aktuellen Daten ("+state.habits.length+" Habits) durch die Sicherung ("+d.habits.length+" Habits). Fortfahren?", "Importieren", ()=>{
+          state=migrate(d); selectedId=null;
+          save(); renderAll();
+          toast("Import erfolgreich: "+state.habits.length+" Habits geladen.");
+        });
+      }catch(e){ toast("Import fehlgeschlagen: "+e.message); }
+    };
+    reader.readAsText(file);
+  }
+
+  // ---------- Events ----------
+  document.getElementById("addBtn").addEventListener("click",()=>openModal(null));
+  document.getElementById("editBtn").addEventListener("click",()=>openModal(selectedId));
+  document.getElementById("cancelBtn").addEventListener("click",closeModal);
+  document.getElementById("saveBtn").addEventListener("click",saveModal);
+  document.getElementById("mColorPicker").addEventListener("input",(e)=>{ modalColor=e.target.value; renderSwatches(); });
+  document.getElementById("deleteBtn").addEventListener("click",deleteHabit);
+  document.getElementById("overlay").addEventListener("click",(e)=>{ if(e.target.id==="overlay") closeModal(); });
+  document.querySelectorAll("#goalMode button").forEach(b=>b.addEventListener("click",()=>setGoalMode(b.getAttribute("data-mode"))));
+  document.getElementById("mName").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveModal(); });
+
+  document.getElementById("prevYear").addEventListener("click",()=>{ currentYear--; selectedId=null; renderAll(); });
+  document.getElementById("nextYear").addEventListener("click",()=>{ currentYear++; selectedId=null; renderAll(); });
+  document.getElementById("printBtn").addEventListener("click",()=>window.print());
+
+  document.getElementById("exportBtn").addEventListener("click",exportData);
+  document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("importFile").click());
+  document.getElementById("importFile").addEventListener("change",function(){ if(this.files[0]) importData(this.files[0]); this.value=""; });
+
+  document.addEventListener("keydown",(e)=>{
+    if(e.key==="Escape"){
+      if(document.getElementById("confirmOverlay").classList.contains("show")) closeConfirm();
+      else closeModal();
+    }
+  });
+
+  renderAll();
+  setTimeout(maybeShowBackupReminder, 800);
+})();
+</script>
+</body>
+</html>
