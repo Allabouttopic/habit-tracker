@@ -179,7 +179,7 @@
   .btn.ghost-danger{border-color:#3a2530;color:#ff8a8a;background:transparent}
   .btn.danger-solid{background:#c0392b;border-color:#c0392b;color:#fff}
 
-  /* Eigener Best√§tigungsdialog (ersetzt confirm/alert des Browsers) */
+  /* Eigener Best&#228;tigungsdialog (ersetzt confirm/alert des Browsers) */
   .overlay.confirm{z-index:60}
   .confirm .modal{max-width:360px}
   .confirm p{margin:0 0 4px;font-size:14px;line-height:1.5;color:var(--text)}
@@ -219,13 +219,13 @@
       <h1>Habit Tracker</h1>
       <p>Deine Gewohnheiten, das ganze Jahr im Blick.</p>
     </div>
-    <div class="sidebar-year">Habits f√ºr <b id="sidebarYear">2026</b></div>
+    <div class="sidebar-year">Habits f&#252;r <b id="sidebarYear">2026</b></div>
     <div class="habit-list" id="habitList"></div>
     <div class="sidebar-foot">
-      <button class="btn primary" id="addBtn">Ôºã Neuer Habit</button>
+      <button class="btn primary" id="addBtn">&#65291; Neuer Habit</button>
       <div class="btn-row">
-        <button class="btn" id="exportBtn" title="Alle Daten als Datei sichern">‚§ì Export</button>
-        <button class="btn" id="importBtn" title="Gesicherte Datei einlesen">‚§í Import</button>
+        <button class="btn" id="exportBtn" title="Alle Daten als Datei sichern">&#10515; Export</button>
+        <button class="btn" id="importBtn" title="Gesicherte Datei einlesen">&#10514; Import</button>
       </div>
       <input type="file" id="importFile" accept="application/json" style="display:none">
     </div>
@@ -236,12 +236,12 @@
       <div class="title" id="mainTitle">Willkommen</div>
       <div class="spacer"></div>
       <div class="year-nav no-print" id="yearNav">
-        <button id="prevYear">‚Äπ</button>
+        <button id="prevYear">&#8249;</button>
         <span class="yr" id="yearLabel">2026</span>
-        <button id="nextYear">‚Ä∫</button>
+        <button id="nextYear">&#8250;</button>
       </div>
       <button class="btn no-print" id="editBtn" style="display:none">Bearbeiten</button>
-      <button class="btn no-print" id="printBtn" style="display:none">üñ® Drucken / PDF</button>
+      <button class="btn no-print" id="printBtn" style="display:none">&#128424; Drucken / PDF</button>
     </div>
 
     <div id="content"></div>
@@ -268,19 +268,19 @@
         <label>Farbe</label>
         <div class="swatches" id="swatches"></div>
         <div class="color-custom">
-          <input type="color" id="mColorPicker" title="Eigene Farbe w√§hlen">
-          <span class="color-custom-label">Eigene Farbe aus der Palette w√§hlen</span>
+          <input type="color" id="mColorPicker" title="Eigene Farbe w&#228;hlen">
+          <span class="color-custom-label">Eigene Farbe aus der Palette w&#228;hlen</span>
         </div>
       </div>
       <div class="modal-actions">
-        <button class="btn ghost-danger" id="deleteBtn" style="display:none">L√∂schen</button>
+        <button class="btn ghost-danger" id="deleteBtn" style="display:none">L&#246;schen</button>
         <button class="btn" id="cancelBtn">Abbrechen</button>
         <button class="btn primary" id="saveBtn">Speichern</button>
       </div>
     </div>
   </div>
 
-  <!-- Eigener Best√§tigungsdialog -->
+  <!-- Eigener Best&#228;tigungsdialog -->
   <div class="overlay confirm" id="confirmOverlay">
     <div class="modal">
       <p id="confirmText"></p>
@@ -300,10 +300,10 @@
   const SELECTED_KEY = "habitTracker.selectedId";
   const YEAR_KEY = "habitTracker.currentYear";
   const COLORS = ["#4f8cff","#3ecf8e","#ff8a5b","#c77dff","#ffce54","#ff6b8a","#38d6c9","#a0d468"];
-  const MONTHS = ["Januar","Februar","M√§rz","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
-  const MONTHS_SHORT = ["Jan","Feb","M√§r","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+  const MONTHS = ["Januar","Februar","M\u00E4rz","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+  const MONTHS_SHORT = ["Jan","Feb","M\u00E4r","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
 
-  // Datenmodell: jeder Habit geh√∂rt zu genau EINEM Jahr.
+  // Datenmodell: jeder Habit geh\u00F6rt zu genau EINEM Jahr.
   // habit = { id, year, name, color, goalMode ("year"|"custom"), target, order, days:{ "y-m-d": true } }
   // "order" bestimmt die Reihenfolge in der Sidebar, jeweils nur unter Habits desselben Jahres.
   let state = load();
@@ -312,7 +312,7 @@
   let editingId = null;
   let modalColor = COLORS[0];
   let modalGoalMode = "year";
-  let lastClickedKey = null; // { habitId, key } -- Anker f√ºr Umschalt+Klick-Bereichsauswahl
+  let lastClickedKey = null; // { habitId, key } -- Anker f\u00FCr Umschalt+Klick-Bereichsauswahl
 
   // ---------- Date helpers ----------
   function isLeap(y){ return (y%4===0 && y%100!==0) || y%400===0; }
@@ -332,7 +332,7 @@
     }catch(e){}
     return { habits: [], created: Date.now() };
   }
-  // Weist Habits ohne "order" (z.B. aus √§lteren Sicherungen) eine Reihenfolge
+  // Weist Habits ohne "order" (z.B. aus \u00E4lteren Sicherungen) eine Reihenfolge
   // zu, basierend auf ihrer bisherigen Position innerhalb desselben Jahres.
   function ensureOrder(d){
     const counters = {};
@@ -343,7 +343,7 @@
     });
     return d;
   }
-  // Migration √§lterer Formate (Habits, die noch √ºber mehrere Jahre liefen)
+  // Migration \u00E4lterer Formate (Habits, die noch \u00FCber mehrere Jahre liefen)
   // in das Ein-Jahr-pro-Habit-Modell: pro betroffenem Jahr ein eigener Habit.
   function migrate(d){
     const nowYear = new Date().getFullYear();
@@ -414,9 +414,9 @@
     for(const k in days){ if(days[k]) c++; }
     return c;
   }
-  // Aktuelle Serie: l√§uft r√ºckw√§rts ab heute (oder gestern, falls heute noch
+  // Aktuelle Serie: l\u00E4uft r\u00FCckw\u00E4rts ab heute (oder gestern, falls heute noch
   // nicht eingetragen ist) durch aufeinanderfolgende erledigte Tage. Ergibt nur
-  // f√ºr das tats√§chlich laufende Jahr einen sinnvollen Wert.
+  // f\u00FCr das tats\u00E4chlich laufende Jahr einen sinnvollen Wert.
   function currentStreak(h){
     const realNow = new Date();
     if(h.year !== realNow.getFullYear()) return 0;
@@ -440,7 +440,7 @@
     if(!sel || sel.year!==currentYear){
       selectedId = list.length ? list[0].id : null;
     }
-    // Auswahl merken, damit nach Schlie√üen/Neu√∂ffnen wieder derselbe Habit
+    // Auswahl merken, damit nach Schlie\u00DFen/Neu\u00F6ffnen wieder derselbe Habit
     // (und nicht immer der erste in der Liste) angezeigt wird.
     localStorage.setItem(SELECTED_KEY, selectedId || "");
     localStorage.setItem(YEAR_KEY, String(currentYear));
@@ -457,7 +457,7 @@
     list.innerHTML = "";
     const habits = habitsOfYear(currentYear);
     if(habits.length===0){
-      list.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:14px;text-align:center;line-height:1.5">Noch keine Habits f√ºr '+currentYear+'.<br>Lege unten einen neuen an.</div>';
+      list.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:14px;text-align:center;line-height:1.5">Noch keine Habits f\u00FCr '+currentYear+'.<br>Lege unten einen neuen an.</div>';
       return;
     }
     habits.forEach(h=>{
@@ -472,15 +472,15 @@
       card.innerHTML =
         '<div class="habit-top"><span class="dot" style="background:'+h.color+'"></span>'+
         '<span class="habit-name">'+escapeHtml(h.name)+'</span></div>'+
-        '<div class="habit-count">'+done+' von '+target+' erf√ºllt ¬∑ '+pct+'%'+
-        (streak>0 ? '<span class="streak-mini">üî• '+streak+'</span>' : '')+'</div>'+
+        '<div class="habit-count">'+done+' von '+target+' erf\u00FCllt \u00B7 '+pct+'%'+
+        (streak>0 ? '<span class="streak-mini">\u{1F525} '+streak+'</span>' : '')+'</div>'+
         '<div class="bar"><span style="width:'+pct+'%;background:'+h.color+'"></span></div>';
       card.addEventListener("click", ()=>{ if(!card.classList.contains("dragging")){ selectedId=h.id; renderAll(); } });
       attachDragHandlers(card, h.id);
       list.appendChild(card);
     });
 
-    // FLIP "Last/Invert/Play": neue Karten optisch an ihre alte Position zur√ºckversetzen
+    // FLIP "Last/Invert/Play": neue Karten optisch an ihre alte Position zur\u00FCckversetzen
     // und dann weich zur echten Position animieren, statt hart zu springen.
     list.querySelectorAll(".habit-card").forEach(c=>{
       const prev = prevRects[c.dataset.id];
@@ -542,7 +542,7 @@
   }
 
   // ---------- Gezielte Updates ohne kompletten Re-render ----------
-  // (n√∂tig, damit die Farb-√úbergangs-Animation auf demselben DOM-Element spielt,
+  // (n\u00F6tig, damit die Farb-\u00DCbergangs-Animation auf demselben DOM-Element spielt,
   // statt bei jedem Klick durch ein frisch gebautes Element ersetzt zu werden)
   function animateCellToggle(cell, done, color){
     cell.classList.toggle("done", done);
@@ -560,7 +560,7 @@
     const streak = currentStreak(h);
     statDone.textContent = done;
     document.getElementById("goalBarFill").style.width = pct+"%";
-    document.getElementById("goalPctText").textContent = pct+"% geschafft ¬∑ noch "+Math.max(0,target-done)+" Tage bis zum Ziel";
+    document.getElementById("goalPctText").textContent = pct+"% geschafft \u00B7 noch "+Math.max(0,target-done)+" Tage bis zum Ziel";
     const badge = document.getElementById("streakBadge");
     badge.style.display = streak>0 ? "inline-flex" : "none";
     document.getElementById("streakVal").textContent = streak;
@@ -573,11 +573,11 @@
     const pct = target>0 ? Math.min(100, Math.round(done/target*100)) : 0;
     const streak = currentStreak(h);
     card.querySelector(".habit-count").innerHTML =
-      done+" von "+target+" erf√ºllt ¬∑ "+pct+"%"+(streak>0 ? '<span class="streak-mini">üî• '+streak+'</span>' : "");
+      done+" von "+target+" erf\u00FCllt \u00B7 "+pct+"%"+(streak>0 ? '<span class="streak-mini">\u{1F525} '+streak+'</span>' : "");
     card.querySelector(".bar > span").style.width = pct+"%";
   }
-  // Markiert alle Tage zwischen zwei Kalender-Keys (inklusive, unabh√§ngig von der
-  // Klickreihenfolge) als erledigt -- f√ºr Umschalt+Klick "ganzen Bereich abhaken".
+  // Markiert alle Tage zwischen zwei Kalender-Keys (inklusive, unabh\u00E4ngig von der
+  // Klickreihenfolge) als erledigt -- f\u00FCr Umschalt+Klick "ganzen Bereich abhaken".
   function setRangeDone(h, keyA, keyB){
     h.days = h.days || {};
     const toDate = (k)=>{ const [y,m,d] = k.split("-").map(Number); return new Date(y,m,d); };
@@ -602,16 +602,16 @@
       editBtn.style.display="none"; printBtn.style.display="none";
       title.textContent = currentYear;
       const prevCount = habitsOfYear(currentYear-1).length;
-      let html = '<div class="empty"><h2>Noch keine Habits f√ºr '+currentYear+'</h2>'+
-        '<p>Lege links √ºber <b>Ôºã Neuer Habit</b> einen neuen Habit f√ºr dieses Jahr an. '+
-        'Jedes Jahr hat seine eigene, unabh√§ngige Habit-Liste.</p>';
+      let html = '<div class="empty"><h2>Noch keine Habits f\u00FCr '+currentYear+'</h2>'+
+        '<p>Lege links \u00FCber <b>\uFF0B Neuer Habit</b> einen neuen Habit f\u00FCr dieses Jahr an. '+
+        'Jedes Jahr hat seine eigene, unabh\u00E4ngige Habit-Liste.</p>';
       if(prevCount>0){
-        html += '<p>Oder √ºbernimm deine '+prevCount+' Habits aus '+(currentYear-1)+
+        html += '<p>Oder \u00FCbernimm deine '+prevCount+' Habits aus '+(currentYear-1)+
           ' (Name, Farbe und Ziel, mit leerem Kalender):</p>'+
-          '<button class="btn primary" id="copyPrevBtn">‚§µ Habits aus '+(currentYear-1)+' √ºbernehmen</button>';
+          '<button class="btn primary" id="copyPrevBtn">\u2935 Habits aus '+(currentYear-1)+' \u00FCbernehmen</button>';
       }
-      html += '<p style="margin-top:20px;font-size:12.5px">Deine Daten bleiben lokal auf diesem Ger√§t gespeichert. '+
-        'Sichere sie ab und zu √ºber <b>‚§ì Export</b>.</p></div>';
+      html += '<p style="margin-top:20px;font-size:12.5px">Deine Daten bleiben lokal auf diesem Ger\u00E4t gespeichert. '+
+        'Sichere sie ab und zu \u00FCber <b>\u2913 Export</b>.</p></div>';
       content.innerHTML = html;
       const cp = document.getElementById("copyPrevBtn");
       if(cp) cp.addEventListener("click", copyFromPrevYear);
@@ -627,19 +627,19 @@
     const streak = currentStreak(h);
 
     let html = '<div class="goal-wrap" style="--glow:'+h.color+'">'+
-      '<div class="goal-head"><span class="big"><b id="statDone">'+done+'</b> von <b id="statTarget">'+target+'</b> Tagen erf√ºllt</span>'+
-      '<span class="streak-badge" id="streakBadge" style="display:'+(streak>0?'inline-flex':'none')+'">üî• <b id="streakVal">'+streak+'</b> Tage in Folge</span>'+
+      '<div class="goal-head"><span class="big"><b id="statDone">'+done+'</b> von <b id="statTarget">'+target+'</b> Tagen erf\u00FCllt</span>'+
+      '<span class="streak-badge" id="streakBadge" style="display:'+(streak>0?'inline-flex':'none')+'">\u{1F525} <b id="streakVal">'+streak+'</b> Tage in Folge</span>'+
       '<span class="big" style="margin-left:auto">'+currentYear+'</span></div>'+
       '<div class="goal-bar"><span id="goalBarFill" style="width:'+pct+'%;background:'+h.color+'"></span></div>'+
-      '<div class="goal-pct" id="goalPctText">'+pct+'% geschafft ¬∑ noch '+Math.max(0,target-done)+' Tage bis zum Ziel</div>'+
+      '<div class="goal-pct" id="goalPctText">'+pct+'% geschafft \u00B7 noch '+Math.max(0,target-done)+' Tage bis zum Ziel</div>'+
       '</div>';
 
     html += '<div class="cal-wrap">'+buildCalendar(h)+
       '<div class="legend">'+
-        '<span class="k"><span class="sw" style="background:'+h.color+';border-color:transparent"></span> erf√ºllt</span>'+
+        '<span class="k"><span class="sw" style="background:'+h.color+';border-color:transparent"></span> erf\u00FCllt</span>'+
         '<span class="k"><span class="sw"></span> offen</span>'+
         '<span class="k"><span class="sw" style="outline:2px solid var(--today);outline-offset:-2px"></span> heute</span>'+
-        '<span class="k">Tipp: Tag anklicken zum Umschalten ¬∑ Umschalt+Klick f√ºr einen ganzen Bereich</span>'+
+        '<span class="k">Tipp: Tag anklicken zum Umschalten \u00B7 Umschalt+Klick f\u00FCr einen ganzen Bereich</span>'+
       '</div></div>';
     content.innerHTML = html;
 
@@ -725,16 +725,16 @@
     if(!state.habits.length) return;
     const last = parseInt(localStorage.getItem(EXPORT_KEY)||"0", 10);
     if(!last){
-      toast("Tipp: Sichere deine Daten regelm√§√üig √ºber ‚§ì Export.", 5000);
+      toast("Tipp: Sichere deine Daten regelm\u00E4\u00DFig \u00FCber \u2913 Export.", 5000);
       return;
     }
     const daysSince = Math.floor((Date.now()-last)/86400000);
     if(daysSince >= REMINDER_DAYS){
-      toast("Letztes Backup ist "+daysSince+" Tage her. Zeit f√ºr ‚§ì Export?", 5000);
+      toast("Letztes Backup ist "+daysSince+" Tage her. Zeit f\u00FCr \u2913 Export?", 5000);
     }
   }
 
-  // ---------- Vorjahr √ºbernehmen ----------
+  // ---------- Vorjahr \u00FCbernehmen ----------
   function copyFromPrevYear(){
     const prev = habitsOfYear(currentYear-1);
     if(!prev.length) return;
@@ -760,7 +760,7 @@
   function openModal(id){
     editingId = id || null;
     const h = id ? getHabit(id) : null;
-    document.getElementById("modalTitle").textContent = h ? "Habit bearbeiten ("+h.year+")" : "Neuer Habit f√ºr "+currentYear;
+    document.getElementById("modalTitle").textContent = h ? "Habit bearbeiten ("+h.year+")" : "Neuer Habit f\u00FCr "+currentYear;
     document.getElementById("mName").value = h ? h.name : "";
     modalColor = h ? h.color : COLORS[habitsOfYear(currentYear).length % COLORS.length];
     modalGoalMode = h ? h.goalMode : "year";
@@ -799,7 +799,7 @@
     if(!name){ toast("Bitte gib einen Namen ein."); return; }
     let target = parseInt(document.getElementById("mTarget").value,10);
     if(modalGoalMode==="custom"){
-      if(!target || target<1){ toast("Bitte gib ein g√ºltiges Ziel (mindestens 1) ein."); return; }
+      if(!target || target<1){ toast("Bitte gib ein g\u00FCltiges Ziel (mindestens 1) ein."); return; }
     }
     if(editingId){
       const h=getHabit(editingId);
@@ -823,11 +823,11 @@
     if(!editingId) return;
     const h=getHabit(editingId);
     const id = editingId;
-    askConfirm('Habit "'+h.name+'" ('+h.year+') mit allen Eintr√§gen wirklich l√∂schen?', 'L√∂schen', ()=>{
+    askConfirm('Habit "'+h.name+'" ('+h.year+') mit allen Eintr\u00E4gen wirklich l\u00F6schen?', 'L\u00F6schen', ()=>{
       state.habits = state.habits.filter(x=>x.id!==id);
       if(selectedId===id) selectedId = null;
       save(); closeModal(); renderAll();
-      toast('Habit "'+h.name+'" gel√∂scht.');
+      toast('Habit "'+h.name+'" gel\u00F6scht.');
     });
   }
 
@@ -848,7 +848,7 @@
     reader.onload=function(){
       try{
         const d=JSON.parse(reader.result);
-        if(!d || !Array.isArray(d.habits)) throw new Error("Ung√ºltiges Format");
+        if(!d || !Array.isArray(d.habits)) throw new Error("Ung\u00FCltiges Format");
         askConfirm("Import ersetzt deine aktuellen Daten ("+state.habits.length+" Habits) durch die Sicherung ("+d.habits.length+" Habits). Fortfahren?", "Importieren", ()=>{
           state=migrate(d); selectedId=null;
           save(); renderAll();
