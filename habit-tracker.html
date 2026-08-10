@@ -1,3 +1,5 @@
+Last login: Sat Aug  8 17:30:26 on console
+torben@MacBookAir ~ % cat /Users/torben/Claude/Habit\ Tracker/habit-tracker.html 
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -23,11 +25,23 @@
   html,body{margin:0;height:100%}
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    background:var(--bg);color:var(--text);
+    color:var(--text);
     display:flex;min-height:100vh;
+    background:
+      radial-gradient(ellipse 1200px 800px at 15% -10%, rgba(79,140,255,.07), transparent 60%),
+      radial-gradient(ellipse 1000px 800px at 100% 110%, rgba(62,207,142,.05), transparent 60%),
+      var(--bg);
+    background-attachment:fixed;
   }
   button{font-family:inherit;cursor:pointer}
   input,select{font-family:inherit}
+
+  /* Eigene, dunkle Scrollbar statt Standard-Browser-Optik */
+  *{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px;border:2px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:#3a4152;background-clip:padding-box}
 
   /* Sidebar */
   .sidebar{
@@ -45,6 +59,13 @@
     display:flex;align-items:center;gap:8px;
   }
   .sidebar-year b{color:var(--text);font-size:14px}
+  .year-btn-mini{
+    width:24px;height:24px;min-width:24px;border-radius:7px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--text);font-size:13px;line-height:1;padding:0;
+    transition:transform .12s ease,border-color .12s ease;
+  }
+  .year-btn-mini:hover{border-color:#3a4152;transform:translateY(-1px)}
+  .year-btn-mini:active{transform:translateY(0) scale(.94)}
 
   .habit-list{overflow:auto;flex:1;padding:10px}
   .habit-card{
@@ -53,7 +74,7 @@
     transition:border-color .15s,transform .05s,box-shadow .15s;position:relative;
     box-shadow:var(--card-shadow);
   }
-  .habit-card:hover{border-color:#3a4152;box-shadow:var(--card-shadow),0 0 0 1px #3a4152}
+  .habit-card:hover{border-color:#3a4152;box-shadow:0 4px 14px rgba(0,0,0,.3),0 0 0 1px #3a4152;transform:translateY(-1px)}
   .habit-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset,var(--card-shadow)}
   .habit-card{cursor:grab}
   .habit-card:active{cursor:grabbing}
@@ -63,7 +84,7 @@
   .habit-top{display:flex;align-items:center;gap:9px}
   .dot{width:12px;height:12px;border-radius:50%;flex:none}
   .habit-name{font-weight:600;font-size:14.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .habit-count{color:var(--muted);font-size:12px;margin-top:8px}
+  .habit-count{color:var(--muted);font-size:12px;margin-top:8px;font-variant-numeric:tabular-nums}
   .bar{height:7px;border-radius:5px;background:#0c0e12;margin-top:6px;overflow:hidden}
   .bar > span{display:block;height:100%;border-radius:5px;transition:width .3s}
 
@@ -73,10 +94,12 @@
     padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:600;
     display:flex;align-items:center;justify-content:center;gap:7px;
     box-shadow:var(--card-shadow);
+    transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease,filter .12s ease;
   }
-  .btn:hover{border-color:#3a4152}
+  .btn:hover{border-color:#3a4152;transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.32)}
+  .btn:active{transform:translateY(0) scale(.97)}
   .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 2px 10px rgba(79,140,255,.35)}
-  .btn.primary:hover{filter:brightness(1.05)}
+  .btn.primary:hover{filter:brightness(1.08);box-shadow:0 4px 16px rgba(79,140,255,.45)}
   .btn-row{display:flex;gap:8px}
   .btn-row .btn{flex:1}
 
@@ -93,9 +116,11 @@
   .year-nav button{
     width:34px;height:34px;border-radius:9px;border:1px solid var(--line);
     background:var(--panel-2);color:var(--text);font-size:16px;line-height:1;
+    transition:transform .12s ease,border-color .12s ease;
   }
-  .year-nav button:hover{border-color:#3a4152}
-  .year-nav .yr{font-weight:700;font-size:17px;min-width:64px;text-align:center}
+  .year-nav button:hover{border-color:#3a4152;transform:translateY(-1px)}
+  .year-nav button:active{transform:translateY(0) scale(.94)}
+  .year-nav .yr{font-weight:700;font-size:17px;min-width:64px;text-align:center;font-variant-numeric:tabular-nums}
 
   .goal-wrap{padding:20px 26px 6px;position:relative;overflow:hidden}
   .goal-wrap::before{
@@ -104,17 +129,18 @@
     opacity:.28;pointer-events:none;z-index:0;
   }
   .goal-wrap > *{position:relative;z-index:1}
-  .goal-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .goal-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
   .goal-head .big{font-size:15px;color:var(--muted)}
-  .goal-head .big b{color:var(--text);font-size:22px}
-  .goal-bar{height:12px;border-radius:7px;background:var(--panel-2);margin-top:12px;overflow:hidden;border:1px solid var(--line)}
+  .goal-head .big b{color:var(--text);font-size:22px;font-variant-numeric:tabular-nums}
+  .goal-bar{height:12px;border-radius:7px;background:var(--panel-2);margin-top:14px;overflow:hidden;border:1px solid var(--line)}
   .goal-bar > span{display:block;height:100%;transition:width .35s}
-  .goal-pct{color:var(--muted);font-size:12.5px;margin-top:6px}
+  .goal-pct{color:var(--muted);font-size:12.5px;margin-top:8px;font-variant-numeric:tabular-nums}
   .streak-badge{
     display:inline-flex;align-items:center;gap:5px;background:var(--panel-2);
-    border:1px solid var(--line);border-radius:9px;padding:4px 10px;font-size:13px;font-weight:600;
+    border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600;
+    font-variant-numeric:tabular-nums;
   }
-  .streak-mini{color:var(--muted);font-weight:700;margin-left:6px}
+  .streak-mini{color:var(--muted);font-weight:700;margin-left:6px;font-variant-numeric:tabular-nums}
 
   /* Calendar */
   .cal-wrap{padding:16px 26px 60px;overflow-x:auto}
@@ -133,15 +159,18 @@
   .cell{
     width:100%;aspect-ratio:1;border-radius:5px;background:var(--panel-2);
     border:1px solid var(--line);cursor:pointer;padding:0;
-    transition:transform .05s, background-color .2s ease, border-color .2s ease;
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.35);
+    transition:transform .05s, background-color .2s ease, background-image .2s ease, border-color .2s ease, box-shadow .2s ease;
   }
   .cell:hover{transform:scale(1.1);z-index:2;position:relative}
-  .cell.off{background:transparent;border-color:transparent;cursor:default}
+  .cell.off{background:transparent;border-color:transparent;cursor:default;box-shadow:none}
   .cell.off:hover{transform:none}
   .cell.today{outline:2px solid var(--today);outline-offset:1px}
-  .cell.done{border-color:transparent}
+  .cell.done{border-color:transparent;box-shadow:0 2px 5px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.25)}
   @keyframes cellPop{ 0%{transform:scale(1)} 45%{transform:scale(1.22)} 100%{transform:scale(1)} }
   .cell.pop{animation:cellPop .26s ease}
+  @keyframes numPulse{ 0%{transform:scale(1);color:var(--text)} 35%{transform:scale(1.22);color:var(--accent)} 100%{transform:scale(1);color:var(--text)} }
+  .num-pulse{display:inline-block;animation:numPulse .38s ease}
   .legend{display:flex;gap:18px;color:var(--muted);font-size:12px;margin:14px 0 0;flex-wrap:wrap}
   .legend .k{display:flex;align-items:center;gap:7px}
   .legend .sw{width:14px;height:14px;border-radius:4px;border:1px solid var(--line)}
@@ -151,9 +180,21 @@
   .empty .btn{display:inline-flex;margin-top:14px;margin-right:10px}
 
   /* Modal */
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
-  .overlay.show{display:flex}
-  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);width:100%;max-width:420px;padding:22px}
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.55);
+    display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;
+    opacity:0;visibility:hidden;pointer-events:none;
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    transition:opacity .2s ease,visibility .2s ease;
+  }
+  .overlay.show{opacity:1;visibility:visible;pointer-events:auto}
+  .modal{
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+    width:100%;max-width:420px;padding:22px;
+    transform:scale(.94) translateY(6px);
+    transition:transform .22s cubic-bezier(.2,.9,.3,1.2);
+  }
+  .overlay.show .modal{transform:scale(1) translateY(0)}
   .modal h3{margin:0 0 16px;font-size:17px}
   .field{margin-bottom:14px}
   .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px;font-weight:600}
@@ -180,7 +221,7 @@
   .btn.ghost-danger{border-color:#3a2530;color:#ff8a8a;background:transparent}
   .btn.danger-solid{background:#c0392b;border-color:#c0392b;color:#fff}
 
-  /* Eigener Best&#228;tigungsdialog (ersetzt confirm/alert des Browsers) */
+  /* Eigener Bestätigungsdialog (ersetzt confirm/alert des Browsers) */
   .overlay.confirm{z-index:60}
   .confirm .modal{max-width:360px}
   .confirm p{margin:0 0 4px;font-size:14px;line-height:1.5;color:var(--text)}
@@ -214,7 +255,7 @@
     .main{height:auto;overflow:visible}
 
     /* App-artige Navigation: erst nur die Liste, nach Auswahl eines Habits
-       nur noch dessen Kalender (Vollbild) mit Zur&#252;ck-Button -- statt einer
+       nur noch dessen Kalender (Vollbild) mit Zurück-Button -- statt einer
        langen Seite mit Liste + Kalender untereinander. */
     body.mobile-detail .sidebar{display:none}
     body:not(.mobile-detail) .main{display:none}
@@ -239,13 +280,17 @@
       <h1>Habit Tracker</h1>
       <p>Deine Gewohnheiten, das ganze Jahr im Blick.</p>
     </div>
-    <div class="sidebar-year">Habits f&#252;r <b id="sidebarYear">2026</b></div>
+    <div class="sidebar-year">
+      <button id="sidebarPrevYear" class="year-btn-mini">‹</button>
+      Habits für <b id="sidebarYear">2026</b>
+      <button id="sidebarNextYear" class="year-btn-mini">›</button>
+    </div>
     <div class="habit-list" id="habitList"></div>
     <div class="sidebar-foot">
-      <button class="btn primary" id="addBtn">&#65291; Neuer Habit</button>
+      <button class="btn primary" id="addBtn">＋ Neuer Habit</button>
       <div class="btn-row">
-        <button class="btn" id="exportBtn" title="Alle Daten als Datei sichern">&#10515; Export</button>
-        <button class="btn" id="importBtn" title="Gesicherte Datei einlesen">&#10514; Import</button>
+        <button class="btn" id="exportBtn" title="Alle Daten als Datei sichern">⤓ Export</button>
+        <button class="btn" id="importBtn" title="Gesicherte Datei einlesen">⤒ Import</button>
       </div>
       <input type="file" id="importFile" accept="application/json" style="display:none">
     </div>
@@ -253,16 +298,16 @@
 
   <main class="main">
     <div class="topbar">
-      <button class="btn ghost small mobile-back" id="backBtn">&#8249; &#220;bersicht</button>
+      <button class="btn ghost small mobile-back" id="backBtn">‹ Übersicht</button>
       <div class="title" id="mainTitle">Willkommen</div>
       <div class="spacer"></div>
       <div class="year-nav no-print" id="yearNav">
-        <button id="prevYear">&#8249;</button>
+        <button id="prevYear">‹</button>
         <span class="yr" id="yearLabel">2026</span>
-        <button id="nextYear">&#8250;</button>
+        <button id="nextYear">›</button>
       </div>
       <button class="btn no-print" id="editBtn" style="display:none">Bearbeiten</button>
-      <button class="btn no-print" id="printBtn" style="display:none">&#128424; Drucken / PDF</button>
+      <button class="btn no-print" id="printBtn" style="display:none">🖨 Drucken / PDF</button>
     </div>
 
     <div id="content"></div>
@@ -289,19 +334,19 @@
         <label>Farbe</label>
         <div class="swatches" id="swatches"></div>
         <div class="color-custom">
-          <input type="color" id="mColorPicker" title="Eigene Farbe w&#228;hlen">
-          <span class="color-custom-label">Eigene Farbe aus der Palette w&#228;hlen</span>
+          <input type="color" id="mColorPicker" title="Eigene Farbe wählen">
+          <span class="color-custom-label">Eigene Farbe aus der Palette wählen</span>
         </div>
       </div>
       <div class="modal-actions">
-        <button class="btn ghost-danger" id="deleteBtn" style="display:none">L&#246;schen</button>
+        <button class="btn ghost-danger" id="deleteBtn" style="display:none">Löschen</button>
         <button class="btn" id="cancelBtn">Abbrechen</button>
         <button class="btn primary" id="saveBtn">Speichern</button>
       </div>
     </div>
   </div>
 
-  <!-- Eigener Best&#228;tigungsdialog -->
+  <!-- Eigener Bestätigungsdialog -->
   <div class="overlay confirm" id="confirmOverlay">
     <div class="modal">
       <p id="confirmText"></p>
@@ -321,10 +366,10 @@
   const SELECTED_KEY = "habitTracker.selectedId";
   const YEAR_KEY = "habitTracker.currentYear";
   const COLORS = ["#4f8cff","#3ecf8e","#ff8a5b","#c77dff","#ffce54","#ff6b8a","#38d6c9","#a0d468"];
-  const MONTHS = ["Januar","Februar","M\u00E4rz","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
-  const MONTHS_SHORT = ["Jan","Feb","M\u00E4r","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+  const MONTHS = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+  const MONTHS_SHORT = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
 
-  // Datenmodell: jeder Habit geh\u00F6rt zu genau EINEM Jahr.
+  // Datenmodell: jeder Habit gehört zu genau EINEM Jahr.
   // habit = { id, year, name, color, goalMode ("year"|"custom"), target, order, days:{ "y-m-d": true } }
   // "order" bestimmt die Reihenfolge in der Sidebar, jeweils nur unter Habits desselben Jahres.
   let state = load();
@@ -334,7 +379,7 @@
   let editingId = null;
   let modalColor = COLORS[0];
   let modalGoalMode = "year";
-  let lastClickedKey = null; // { habitId, key } -- Anker f\u00FCr Umschalt+Klick-Bereichsauswahl
+  let lastClickedKey = null; // { habitId, key } -- Anker für Umschalt+Klick-Bereichsauswahl
 
   // ---------- Date helpers ----------
   function isLeap(y){ return (y%4===0 && y%100!==0) || y%400===0; }
@@ -354,7 +399,7 @@
     }catch(e){}
     return { habits: [], created: Date.now() };
   }
-  // Weist Habits ohne "order" (z.B. aus \u00E4lteren Sicherungen) eine Reihenfolge
+  // Weist Habits ohne "order" (z.B. aus älteren Sicherungen) eine Reihenfolge
   // zu, basierend auf ihrer bisherigen Position innerhalb desselben Jahres.
   function ensureOrder(d){
     const counters = {};
@@ -365,7 +410,7 @@
     });
     return d;
   }
-  // Migration \u00E4lterer Formate (Habits, die noch \u00FCber mehrere Jahre liefen)
+  // Migration älterer Formate (Habits, die noch über mehrere Jahre liefen)
   // in das Ein-Jahr-pro-Habit-Modell: pro betroffenem Jahr ein eigener Habit.
   function migrate(d){
     const nowYear = new Date().getFullYear();
@@ -436,9 +481,9 @@
     for(const k in days){ if(days[k]) c++; }
     return c;
   }
-  // Aktuelle Serie: l\u00E4uft r\u00FCckw\u00E4rts ab heute (oder gestern, falls heute noch
+  // Aktuelle Serie: läuft rückwärts ab heute (oder gestern, falls heute noch
   // nicht eingetragen ist) durch aufeinanderfolgende erledigte Tage. Ergibt nur
-  // f\u00FCr das tats\u00E4chlich laufende Jahr einen sinnvollen Wert.
+  // für das tatsächlich laufende Jahr einen sinnvollen Wert.
   function currentStreak(h){
     const realNow = new Date();
     if(h.year !== realNow.getFullYear()) return 0;
@@ -462,7 +507,7 @@
     if(!sel || sel.year!==currentYear){
       selectedId = list.length ? list[0].id : null;
     }
-    // Auswahl merken, damit nach Schlie\u00DFen/Neu\u00F6ffnen wieder derselbe Habit
+    // Auswahl merken, damit nach Schließen/Neuöffnen wieder derselbe Habit
     // (und nicht immer der erste in der Liste) angezeigt wird.
     localStorage.setItem(SELECTED_KEY, selectedId || "");
     localStorage.setItem(YEAR_KEY, String(currentYear));
@@ -470,7 +515,7 @@
 
   // Auf schmalen Bildschirmen (siehe @media max-width:720px) zeigt body.mobile-detail
   // entweder die Liste ODER den Kalender im Vollbild, nie beides gleichzeitig.
-  // Auf dem Desktop (Klasse ohne Wirkung au\u00DFerhalb der Media Query) bleibt alles unver\u00E4ndert.
+  // Auf dem Desktop (Klasse ohne Wirkung außerhalb der Media Query) bleibt alles unverändert.
   function applyMobileDetailClass(){
     document.body.classList.toggle("mobile-detail", mobileDetail);
   }
@@ -486,7 +531,7 @@
     list.innerHTML = "";
     const habits = habitsOfYear(currentYear);
     if(habits.length===0){
-      list.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:14px;text-align:center;line-height:1.5">Noch keine Habits f\u00FCr '+currentYear+'.<br>Lege unten einen neuen an.</div>';
+      list.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:14px;text-align:center;line-height:1.5">Noch keine Habits für '+currentYear+'.<br>Lege unten einen neuen an.</div>';
       return;
     }
     habits.forEach(h=>{
@@ -501,15 +546,15 @@
       card.innerHTML =
         '<div class="habit-top"><span class="dot" style="background:'+h.color+'"></span>'+
         '<span class="habit-name">'+escapeHtml(h.name)+'</span></div>'+
-        '<div class="habit-count">'+done+' von '+target+' erf\u00FCllt \u00B7 '+pct+'%'+
-        (streak>0 ? '<span class="streak-mini">\u{1F525} '+streak+'</span>' : '')+'</div>'+
-        '<div class="bar"><span style="width:'+pct+'%;background:'+h.color+'"></span></div>';
+        '<div class="habit-count">'+done+' von '+target+' erfüllt · '+pct+'%'+
+        (streak>0 ? '<span class="streak-mini">🔥 '+streak+'</span>' : '')+'</div>'+
+        '<div class="bar"><span style="width:'+pct+'%;'+gradientStyle(h.color)+'"></span></div>';
       card.addEventListener("click", ()=>{ if(!card.classList.contains("dragging")){ selectedId=h.id; mobileDetail=true; renderAll(); } });
       attachDragHandlers(card, h.id);
       list.appendChild(card);
     });
 
-    // FLIP "Last/Invert/Play": neue Karten optisch an ihre alte Position zur\u00FCckversetzen
+    // FLIP "Last/Invert/Play": neue Karten optisch an ihre alte Position zurückversetzen
     // und dann weich zur echten Position animieren, statt hart zu springen.
     list.querySelectorAll(".habit-card").forEach(c=>{
       const prev = prevRects[c.dataset.id];
@@ -571,14 +616,38 @@
   }
 
   // ---------- Gezielte Updates ohne kompletten Re-render ----------
-  // (n\u00F6tig, damit die Farb-\u00DCbergangs-Animation auf demselben DOM-Element spielt,
+  // (nötig, damit die Farb-Übergangs-Animation auf demselben DOM-Element spielt,
   // statt bei jedem Klick durch ein frisch gebautes Element ersetzt zu werden)
   function animateCellToggle(cell, done, color){
     cell.classList.toggle("done", done);
-    cell.style.background = done ? color : "";
+    cell.style.backgroundColor = done ? color : "";
+    cell.style.backgroundImage = done ? "linear-gradient(135deg,"+color+",color-mix(in srgb,"+color+" 65%,white))" : "";
     cell.classList.remove("pop");
     void cell.offsetWidth; // Reflow erzwingen, damit die Animation bei schnellen Klicks neu startet
     cell.classList.add("pop");
+  }
+  // Lässt eine Zahl sanft von ihrem aktuellen Anzeigewert zum neuen Wert hochzählen,
+  // statt hart zu springen -- kleines, aber spürbares Detail bei jedem Abhaken.
+  function animateNumber(el, to){
+    const from = parseInt(el.textContent, 10);
+    // Kurzer Puls, unabhängig von der Sprunggröße -- bei +1 (Normalfall beim
+    // Abhaken eines einzelnen Tages) gibt es sonst keine sichtbaren Zwischenwerte.
+    if(Number.isFinite(from) && from !== to){
+      el.classList.remove("num-pulse");
+      void el.offsetWidth;
+      el.classList.add("num-pulse");
+    }
+    if(!Number.isFinite(from) || from === to){ el.textContent = to; return; }
+    const duration = 400;
+    const start = performance.now();
+    function step(now){
+      const p = Math.min(1, (now-start)/duration);
+      const eased = 1 - Math.pow(1-p, 3);
+      el.textContent = Math.round(from + (to-from)*eased);
+      if(p<1) requestAnimationFrame(step);
+      else el.textContent = to;
+    }
+    requestAnimationFrame(step);
   }
   function updateMainStats(h){
     const statDone = document.getElementById("statDone");
@@ -587,12 +656,12 @@
     const target = targetFor(h);
     const pct = target>0 ? Math.min(100, Math.round(done/target*100)) : 0;
     const streak = currentStreak(h);
-    statDone.textContent = done;
+    animateNumber(statDone, done);
     document.getElementById("goalBarFill").style.width = pct+"%";
-    document.getElementById("goalPctText").textContent = pct+"% geschafft \u00B7 noch "+Math.max(0,target-done)+" Tage bis zum Ziel";
+    document.getElementById("goalPctText").textContent = pct+"% geschafft · noch "+Math.max(0,target-done)+" Tage bis zum Ziel";
     const badge = document.getElementById("streakBadge");
     badge.style.display = streak>0 ? "inline-flex" : "none";
-    document.getElementById("streakVal").textContent = streak;
+    animateNumber(document.getElementById("streakVal"), streak);
   }
   function updateSidebarCard(h){
     const card = document.querySelector('.habit-card[data-id="'+h.id+'"]');
@@ -602,11 +671,11 @@
     const pct = target>0 ? Math.min(100, Math.round(done/target*100)) : 0;
     const streak = currentStreak(h);
     card.querySelector(".habit-count").innerHTML =
-      done+" von "+target+" erf\u00FCllt \u00B7 "+pct+"%"+(streak>0 ? '<span class="streak-mini">\u{1F525} '+streak+'</span>' : "");
+      done+" von "+target+" erfüllt · "+pct+"%"+(streak>0 ? '<span class="streak-mini">🔥 '+streak+'</span>' : "");
     card.querySelector(".bar > span").style.width = pct+"%";
   }
-  // Markiert alle Tage zwischen zwei Kalender-Keys (inklusive, unabh\u00E4ngig von der
-  // Klickreihenfolge) als erledigt -- f\u00FCr Umschalt+Klick "ganzen Bereich abhaken".
+  // Markiert alle Tage zwischen zwei Kalender-Keys (inklusive, unabhängig von der
+  // Klickreihenfolge) als erledigt -- für Umschalt+Klick "ganzen Bereich abhaken".
   function setRangeDone(h, keyA, keyB){
     h.days = h.days || {};
     const toDate = (k)=>{ const [y,m,d] = k.split("-").map(Number); return new Date(y,m,d); };
@@ -631,16 +700,16 @@
       editBtn.style.display="none"; printBtn.style.display="none";
       title.textContent = currentYear;
       const prevCount = habitsOfYear(currentYear-1).length;
-      let html = '<div class="empty"><h2>Noch keine Habits f\u00FCr '+currentYear+'</h2>'+
-        '<p>Lege links \u00FCber <b>\uFF0B Neuer Habit</b> einen neuen Habit f\u00FCr dieses Jahr an. '+
-        'Jedes Jahr hat seine eigene, unabh\u00E4ngige Habit-Liste.</p>';
+      let html = '<div class="empty"><h2>Noch keine Habits für '+currentYear+'</h2>'+
+        '<p>Lege links über <b>＋ Neuer Habit</b> einen neuen Habit für dieses Jahr an. '+
+        'Jedes Jahr hat seine eigene, unabhängige Habit-Liste.</p>';
       if(prevCount>0){
-        html += '<p>Oder \u00FCbernimm deine '+prevCount+' Habits aus '+(currentYear-1)+
+        html += '<p>Oder übernimm deine '+prevCount+' Habits aus '+(currentYear-1)+
           ' (Name, Farbe und Ziel, mit leerem Kalender):</p>'+
-          '<button class="btn primary" id="copyPrevBtn">\u2935 Habits aus '+(currentYear-1)+' \u00FCbernehmen</button>';
+          '<button class="btn primary" id="copyPrevBtn">⤵ Habits aus '+(currentYear-1)+' übernehmen</button>';
       }
-      html += '<p style="margin-top:20px;font-size:12.5px">Deine Daten bleiben lokal auf diesem Ger\u00E4t gespeichert. '+
-        'Sichere sie ab und zu \u00FCber <b>\u2913 Export</b>.</p></div>';
+      html += '<p style="margin-top:20px;font-size:12.5px">Deine Daten bleiben lokal auf diesem Gerät gespeichert. '+
+        'Sichere sie ab und zu über <b>⤓ Export</b>.</p></div>';
       content.innerHTML = html;
       const cp = document.getElementById("copyPrevBtn");
       if(cp) cp.addEventListener("click", copyFromPrevYear);
@@ -656,19 +725,19 @@
     const streak = currentStreak(h);
 
     let html = '<div class="goal-wrap" style="--glow:'+h.color+'">'+
-      '<div class="goal-head"><span class="big"><b id="statDone">'+done+'</b> von <b id="statTarget">'+target+'</b> Tagen erf\u00FCllt</span>'+
-      '<span class="streak-badge" id="streakBadge" style="display:'+(streak>0?'inline-flex':'none')+'">\u{1F525} <b id="streakVal">'+streak+'</b> Tage in Folge</span>'+
+      '<div class="goal-head"><span class="big"><b id="statDone">'+done+'</b> von <b id="statTarget">'+target+'</b> Tagen erfüllt</span>'+
+      '<span class="streak-badge" id="streakBadge" style="display:'+(streak>0?'inline-flex':'none')+'">🔥 <b id="streakVal">'+streak+'</b> Tage in Folge</span>'+
       '<span class="big" style="margin-left:auto">'+currentYear+'</span></div>'+
-      '<div class="goal-bar"><span id="goalBarFill" style="width:'+pct+'%;background:'+h.color+'"></span></div>'+
-      '<div class="goal-pct" id="goalPctText">'+pct+'% geschafft \u00B7 noch '+Math.max(0,target-done)+' Tage bis zum Ziel</div>'+
+      '<div class="goal-bar"><span id="goalBarFill" style="width:'+pct+'%;'+gradientStyle(h.color)+'"></span></div>'+
+      '<div class="goal-pct" id="goalPctText">'+pct+'% geschafft · noch '+Math.max(0,target-done)+' Tage bis zum Ziel</div>'+
       '</div>';
 
     html += '<div class="cal-wrap">'+buildCalendar(h)+
       '<div class="legend">'+
-        '<span class="k"><span class="sw" style="background:'+h.color+';border-color:transparent"></span> erf\u00FCllt</span>'+
+        '<span class="k"><span class="sw" style="background:'+h.color+';border-color:transparent"></span> erfüllt</span>'+
         '<span class="k"><span class="sw"></span> offen</span>'+
         '<span class="k"><span class="sw" style="outline:2px solid var(--today);outline-offset:-2px"></span> heute</span>'+
-        '<span class="k">Tipp: Tag anklicken zum Umschalten \u00B7 Umschalt+Klick f\u00FCr einen ganzen Bereich</span>'+
+        '<span class="k">Tipp: Tag anklicken zum Umschalten · Umschalt+Klick für einen ganzen Bereich</span>'+
       '</div></div>';
     content.innerHTML = html;
 
@@ -711,7 +780,7 @@
         const done = !!days[k];
         const isToday = (year===tY && m===tM && d===tD);
         let cls = "cell"+(done?" done":"")+(isToday?" today":"");
-        const style = done ? 'style="background:'+h.color+'"' : '';
+        const style = done ? 'style="'+gradientStyle(h.color)+'"' : '';
         const tip = MONTHS_SHORT[m]+' '+d+', '+year;
         t += '<div class="'+cls+'" '+style+' data-k="'+k+'" title="'+tip+'"></div>';
       }
@@ -723,6 +792,12 @@
   function renderAll(){ ensureSelection(); applyMobileDetailClass(); renderSidebar(); renderMain(); }
 
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+  // Sanfter Farbverlauf statt Flachfarbe für gefüllte Balken/Kästchen. background-color
+  // dient als Fallback, falls color-mix() im Browser mal nicht unterstützt sein sollte.
+  function gradientStyle(color){
+    return "background-color:"+color+";background-image:linear-gradient(135deg,"+color+",color-mix(in srgb,"+color+" 65%,white));";
+  }
 
   // ---------- Eigene Dialoge (statt confirm/alert, die z.T. blockiert werden) ----------
   let confirmCb = null;
@@ -754,16 +829,16 @@
     if(!state.habits.length) return;
     const last = parseInt(localStorage.getItem(EXPORT_KEY)||"0", 10);
     if(!last){
-      toast("Tipp: Sichere deine Daten regelm\u00E4\u00DFig \u00FCber \u2913 Export.", 5000);
+      toast("Tipp: Sichere deine Daten regelmäßig über ⤓ Export.", 5000);
       return;
     }
     const daysSince = Math.floor((Date.now()-last)/86400000);
     if(daysSince >= REMINDER_DAYS){
-      toast("Letztes Backup ist "+daysSince+" Tage her. Zeit f\u00FCr \u2913 Export?", 5000);
+      toast("Letztes Backup ist "+daysSince+" Tage her. Zeit für ⤓ Export?", 5000);
     }
   }
 
-  // ---------- Vorjahr \u00FCbernehmen ----------
+  // ---------- Vorjahr übernehmen ----------
   function copyFromPrevYear(){
     const prev = habitsOfYear(currentYear-1);
     if(!prev.length) return;
@@ -789,7 +864,7 @@
   function openModal(id){
     editingId = id || null;
     const h = id ? getHabit(id) : null;
-    document.getElementById("modalTitle").textContent = h ? "Habit bearbeiten ("+h.year+")" : "Neuer Habit f\u00FCr "+currentYear;
+    document.getElementById("modalTitle").textContent = h ? "Habit bearbeiten ("+h.year+")" : "Neuer Habit für "+currentYear;
     document.getElementById("mName").value = h ? h.name : "";
     modalColor = h ? h.color : COLORS[habitsOfYear(currentYear).length % COLORS.length];
     modalGoalMode = h ? h.goalMode : "year";
@@ -828,7 +903,7 @@
     if(!name){ toast("Bitte gib einen Namen ein."); return; }
     let target = parseInt(document.getElementById("mTarget").value,10);
     if(modalGoalMode==="custom"){
-      if(!target || target<1){ toast("Bitte gib ein g\u00FCltiges Ziel (mindestens 1) ein."); return; }
+      if(!target || target<1){ toast("Bitte gib ein gültiges Ziel (mindestens 1) ein."); return; }
     }
     if(editingId){
       const h=getHabit(editingId);
@@ -855,20 +930,24 @@
     if(!editingId) return;
     const h=getHabit(editingId);
     const id = editingId;
-    askConfirm('Habit "'+h.name+'" ('+h.year+') mit allen Eintr\u00E4gen wirklich l\u00F6schen?', 'L\u00F6schen', ()=>{
+    askConfirm('Habit "'+h.name+'" ('+h.year+') mit allen Einträgen wirklich löschen?', 'Löschen', ()=>{
       state.habits = state.habits.filter(x=>x.id!==id);
       if(selectedId===id) selectedId = null;
       save(); closeModal(); renderAll();
-      toast('Habit "'+h.name+'" gel\u00F6scht.');
+      toast('Habit "'+h.name+'" gelöscht.');
     });
   }
 
   // ---------- Export / Import ----------
   function exportData(){
-    const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+    const d=new Date();
+    // Exportzeitpunkt zusätzlich im Dateiinhalt selbst festhalten (nicht nur im
+    // Dateinamen), falls die Datei mal umbenannt wird -- payload statt state
+    // direkt, damit die laufende App-Daten dadurch nicht verändert werden.
+    const payload = Object.assign({}, state, { exportedAt: d.toLocaleString("de-DE") });
+    const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
     const url = URL.createObjectURL(blob);
     const a=document.createElement("a");
-    const d=new Date();
     const stamp = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
     a.href=url; a.download="habit-tracker-backup-"+stamp+".json";
     document.body.appendChild(a); a.click(); a.remove();
@@ -880,7 +959,7 @@
     reader.onload=function(){
       try{
         const d=JSON.parse(reader.result);
-        if(!d || !Array.isArray(d.habits)) throw new Error("Ung\u00FCltiges Format");
+        if(!d || !Array.isArray(d.habits)) throw new Error("Ungültiges Format");
         askConfirm("Import ersetzt deine aktuellen Daten ("+state.habits.length+" Habits) durch die Sicherung ("+d.habits.length+" Habits). Fortfahren?", "Importieren", ()=>{
           state=migrate(d); selectedId=null;
           save(); renderAll();
@@ -902,8 +981,11 @@
   document.querySelectorAll("#goalMode button").forEach(b=>b.addEventListener("click",()=>setGoalMode(b.getAttribute("data-mode"))));
   document.getElementById("mName").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveModal(); });
 
-  document.getElementById("prevYear").addEventListener("click",()=>{ currentYear--; selectedId=null; renderAll(); });
-  document.getElementById("nextYear").addEventListener("click",()=>{ currentYear++; selectedId=null; renderAll(); });
+  function changeYear(delta){ currentYear+=delta; selectedId=null; renderAll(); }
+  document.getElementById("prevYear").addEventListener("click",()=>changeYear(-1));
+  document.getElementById("nextYear").addEventListener("click",()=>changeYear(1));
+  document.getElementById("sidebarPrevYear").addEventListener("click",()=>changeYear(-1));
+  document.getElementById("sidebarNextYear").addEventListener("click",()=>changeYear(1));
   document.getElementById("printBtn").addEventListener("click",()=>window.print());
   document.getElementById("backBtn").addEventListener("click",()=>{ mobileDetail=false; renderAll(); });
 
@@ -924,3 +1006,4 @@
 </script>
 </body>
 </html>
+torben@MacBookAir ~ % 
