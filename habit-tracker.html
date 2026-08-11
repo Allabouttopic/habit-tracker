@@ -190,6 +190,18 @@
 
   /* Monatsansicht */
   .month-card{margin-top:22px;max-width:560px}
+  /* Alle zwoelf Monate liegen nebeneinander in einem waagerechten Streifen.
+     Das Blaettern uebernimmt der Browser als echtes Scrollen -- dadurch folgt
+     der Kalender dem Finger und rastet ueber scroll-snap auf dem naechsten
+     Monat ein. "overscroll-behavior-x: contain" verhindert, dass ein Wisch
+     am Rand stattdessen die Zurueck-Geste des Browsers ausloest. */
+  .month-scroller{
+    display:flex;overflow-x:auto;overflow-y:hidden;
+    scroll-snap-type:x mandatory;overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;
+  }
+  .month-scroller::-webkit-scrollbar{display:none}
+  .month-page{flex:0 0 100%;min-width:0;scroll-snap-align:center}
   .cal-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
   .cal-title{flex:1;text-align:center;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
   .cal-nav{
@@ -970,9 +982,12 @@
       card.addEventListener("click", ()=>{
         if(card.classList.contains("dragging")) return;
         // Am Handy schiebt sich die Detailansicht von rechts herein, am Mac
-        // wechselt nur der Inhalt rechts -- daher zwei verschiedene Ziele.
+        // wandert der Inhalt nach oben. Bewegt wird dabei immer #content und
+        // nie .main: .main ist ein direktes Kind von <body>, und ein seitlich
+        // versetztes Kind von <body> ragt \u00fcber den Rand hinaus und erzeugt f\u00fcr
+        // die Dauer der Bewegung eine waagerechte Bildlaufleiste.
         pendingAnim = window.matchMedia("(max-width:720px)").matches
-          ? { sel:".main", cls:"anim-right" }
+          ? { sel:"#content", cls:"anim-right" }
           : { sel:"#content", cls:"anim-up" };
         // Wer einen bestimmten Habit antippt, will dessen Zahlen sehen --
         // nicht die Gesamt\u00fcbersicht, die vorher offen war.
@@ -1204,7 +1219,7 @@
         '<button data-mode="year"'+(calMode==="year"?' class="sel"':'')+'>Jahr</button>'+
       '</div>';
 
-    html += (calMode==="year") ? buildYear(h) : (buildBand(h) + buildMonth(h, calMonth, wave));
+    html += (calMode==="year") ? buildYear(h) : (buildBand(h) + buildMonthPages(h, calMonth, wave));
 
     html += '<div class="legend">'+
         '<span class="k"><span class="sw" style="background:'+h.color+';border-color:transparent"></span> erf\u00fcllt</span>'+
@@ -1220,16 +1235,26 @@
     wireCalendar(content, h, wave);
   }
 
-  // Monat wechseln -- die Karte gleitet dabei aus der Richtung herein, in die
-  // gebl\u00e4ttert wurde. Die Aufbauwelle entf\u00e4llt beim Bl\u00e4ttern, sonst k\u00e4me beides
-  // gleichzeitig und wirkte unruhig.
-  function goMonth(m, richtung){
-    if(m<0 || m>11) return;
+  // Zu einem Monat bl\u00e4ttern hei\u00dft: an die passende Stelle des Streifens scrollen.
+  // Kein Neuaufbau -- dadurch bleibt beim Wischen alles fl\u00fcssig, und die Pfeile
+  // bewegen den Kalender genauso wie der Finger.
+  function scrollToMonth(m, sanft){
+    const sc = document.getElementById("monthScroller");
+    if(!sc || m<0 || m>11) return;
     calMonth = m;
-    skipCalWave = true;
-    pendingAnim = { sel:".month-card", cls: richtung>0 ? "anim-right" : "anim-left" };
-    renderMain();
-    consumeAnim();
+    sc.scrollTo({ left: m*sc.clientWidth, behavior: (sanft && animOn) ? "smooth" : "auto" });
+    updateCalHead(sc.closest(".month-card"));
+  }
+
+  // \u00dcberschrift und Pfeile richten sich nach dem gerade sichtbaren Monat.
+  function updateCalHead(card){
+    if(!card) return;
+    const h = getHabit(selectedId);
+    const t = card.querySelector("#calTitle");
+    if(t && h) t.textContent = MONTHS[calMonth]+" "+h.year;
+    const p = card.querySelector("#calPrev"), n = card.querySelector("#calNext");
+    if(p) p.disabled = (calMonth===0);
+    if(n) n.disabled = (calMonth===11);
   }
 
   function updateBandCell(root, k, done, color){
@@ -1238,13 +1263,18 @@
     el.classList.toggle("done", done);
     el.style.cssText = done ? gradientStyle(color) : "";
   }
-  function updateMonthFoot(root, h){
-    const foot = root.querySelector(".month-foot");
-    if(!foot) return;
-    const dim = daysInMonth(h.year, calMonth);
+  // Z\u00e4hlt f\u00fcr die Seite, auf der die angeklickte Zelle liegt -- nicht f\u00fcr den
+  // gerade sichtbaren Monat, denn bei einem Bereich \u00fcber einen Monatswechsel
+  // hinweg w\u00e4ren das zwei verschiedene.
+  function updateMonthFoot(cell, h){
+    const seite = cell.closest(".month-page");
+    if(!seite) return;
+    const m = parseInt(seite.dataset.m, 10);
+    const dim = daysInMonth(h.year, m);
     let c = 0;
-    for(let d=1; d<=dim; d++) if((h.days||{})[key(h.year,calMonth,d)]) c++;
-    foot.textContent = c+" von "+dim+" Tagen erf\u00fcllt";
+    for(let d=1; d<=dim; d++) if((h.days||{})[key(h.year,m,d)]) c++;
+    const foot = seite.querySelector(".month-foot");
+    if(foot) foot.textContent = c+" von "+dim+" Tagen erf\u00fcllt";
   }
 
   function wireCalendar(content, h, wave){
@@ -1272,31 +1302,33 @@
     // bei rund 20 Pixeln Kantenl\u00e4nge w\u00e4re Abhaken zu fehleranf\u00e4llig.
     content.querySelectorAll(".bcell[data-jump]").forEach(el=>el.addEventListener("click", ()=>{
       const m = parseInt(el.dataset.jump, 10);
-      if(m!==calMonth) goMonth(m, m>calMonth ? 1 : -1);
+      if(m!==calMonth) scrollToMonth(m, true);
     }));
 
     const prev = content.querySelector("#calPrev");
     const next = content.querySelector("#calNext");
-    if(prev) prev.addEventListener("click", ()=>goMonth(calMonth-1, -1));
-    if(next) next.addEventListener("click", ()=>goMonth(calMonth+1, 1));
+    if(prev) prev.addEventListener("click", ()=>scrollToMonth(calMonth-1, true));
+    if(next) next.addEventListener("click", ()=>scrollToMonth(calMonth+1, true));
 
-    // Wischen am Handy
-    const card = content.querySelector(".month-card");
-    if(card){
-      let sx=0, sy=0, aktiv=false;
-      card.addEventListener("touchstart", (e)=>{
-        if(e.touches.length!==1) return;
-        sx = e.touches[0].clientX; sy = e.touches[0].clientY; aktiv = true;
-      }, {passive:true});
-      card.addEventListener("touchend", (e)=>{
-        if(!aktiv) return;
-        aktiv = false;
-        const dx = e.changedTouches[0].clientX - sx;
-        const dy = e.changedTouches[0].clientY - sy;
-        // Nur eindeutig waagerechte Gesten z\u00e4hlen, sonst l\u00f6st jedes Hoch- und
-        // Runterscrollen versehentlich einen Monatswechsel aus.
-        if(Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy)*1.6) return;
-        goMonth(calMonth + (dx<0 ? 1 : -1), dx<0 ? 1 : -1);
+    const sc = content.querySelector("#monthScroller");
+    if(sc){
+      // Startposition ohne sichtbare Bewegung setzen
+      sc.scrollLeft = calMonth * sc.clientWidth;
+      // Beim Wischen mitz\u00e4hlen, welcher Monat gerade im Bild ist. Die kurze
+      // Verz\u00f6gerung wartet ab, bis das Einrasten fertig ist -- sonst w\u00fcrde die
+      // \u00dcberschrift w\u00e4hrend des Ziehens mehrfach hin und her springen.
+      let scrollTimer = null;
+      sc.addEventListener("scroll", ()=>{
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(()=>{
+          const breite = sc.clientWidth;
+          if(!breite) return;
+          const m = Math.max(0, Math.min(11, Math.round(sc.scrollLeft/breite)));
+          if(m !== calMonth){
+            calMonth = m;
+            updateCalHead(sc.closest(".month-card"));
+          }
+        }, 80);
       }, {passive:true});
     }
 
@@ -1320,7 +1352,7 @@
         updateMainStats(h);
         updateSidebarCard(h);
         updateBandCell(content, k, nowDone, h.color);
-        updateMonthFoot(content, h);
+        updateMonthFoot(cell, h);
         lastClickedKey = { habitId:h.id, key:k };
       });
     });
@@ -1400,7 +1432,7 @@
   // Ein Monat als vertrautes Wochenraster. Tage aus Nachbarmonaten werden
   // ausgegraut gezeigt, sind aber nicht anklickbar -- sie geh\u00f6ren zu einem
   // anderen Jahr bzw. Monat und damit nicht in diesen Habit-Kalender.
-  function buildMonth(h, m, withWave){
+  function buildMonthGrid(h, m, withWave){
     const y = h.year, t = heute(), days = h.days||{};
     const dim = daysInMonth(y,m);
     const lead = wdMon(new Date(y,m,1));
@@ -1423,15 +1455,25 @@
         (style?' style="'+style+'"':'')+' data-k="'+k+'">'+d.getDate()+'<span class="dt"></span></button>';
     }
     raster += '</div>';
+    return raster + '<div class="month-foot">'+erfuellt+' von '+dim+' Tagen erf\u00fcllt</div>';
+  }
 
+  // Alle zw\u00f6lf Monate nebeneinander. Der sichtbare Ausschnitt wird \u00fcber die
+  // Scrollposition bestimmt, nicht \u00fcber einen Neuaufbau -- deshalb bleibt das
+  // Bl\u00e4ttern fl\u00fcssig, auch wenn man schnell durchwischt.
+  function buildMonthPages(h, aktiv, withWave){
+    let seiten = "";
+    for(let m=0;m<12;m++){
+      seiten += '<div class="month-page" data-m="'+m+'">'+
+        buildMonthGrid(h, m, withWave && m===aktiv)+'</div>';
+    }
     return '<div class="month-card">'+
       '<div class="cal-head">'+
-        '<button class="cal-nav" id="calPrev"'+(m===0?" disabled":"")+' aria-label="Vorheriger Monat">\u2039</button>'+
-        '<div class="cal-title">'+MONTHS[m]+' '+y+'</div>'+
-        '<button class="cal-nav" id="calNext"'+(m===11?" disabled":"")+' aria-label="N\u00e4chster Monat">\u203a</button>'+
+        '<button class="cal-nav" id="calPrev"'+(aktiv===0?" disabled":"")+' aria-label="Vorheriger Monat">\u2039</button>'+
+        '<div class="cal-title" id="calTitle">'+MONTHS[aktiv]+' '+h.year+'</div>'+
+        '<button class="cal-nav" id="calNext"'+(aktiv===11?" disabled":"")+' aria-label="N\u00e4chster Monat">\u203a</button>'+
       '</div>'+
-      raster+
-      '<div class="month-foot">'+erfuellt+' von '+dim+' Tagen erf\u00fcllt</div>'+
+      '<div class="month-scroller" id="monthScroller">'+seiten+'</div>'+
       '</div>';
   }
 
@@ -2041,9 +2083,9 @@
         return;
       }
       const v = (t==="stats") ? "stats" : "cal";
-      // Aus der Liste heraus fliegt die ganze Detailansicht herein, innerhalb
-      // der Detailansicht wechselt nur der Inhalt.
-      pendingAnim = !mobileDetail ? { sel:".main", cls:"anim-right" } : { sel:"#content", cls:"anim-up" };
+      // Aus der Liste heraus gleitet der Inhalt von rechts herein, innerhalb
+      // der Detailansicht wandert er nach oben.
+      pendingAnim = !mobileDetail ? { sel:"#content", cls:"anim-right" } : { sel:"#content", cls:"anim-up" };
       view = v;
       localStorage.setItem(VIEW_KEY, view);
       mobileDetail = true;
@@ -2100,6 +2142,10 @@
       document.querySelectorAll(".seg").forEach(s=>positionSegThumb(s, true));
       const t = document.getElementById("tabThumb");
       if(t){ t.style.transition = "none"; t.style.width = ""; positionTabThumb(); }
+      // Die Seitenbreite des Monatsstreifens hat sich ge\u00e4ndert -- sonst st\u00fcnde
+      // der Kalender nach einer Gr\u00f6\u00dfen\u00e4nderung zwischen zwei Monaten.
+      const sc = document.getElementById("monthScroller");
+      if(sc && sc.clientWidth) sc.scrollLeft = calMonth * sc.clientWidth;
     }, 120);
   });
 
