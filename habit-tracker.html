@@ -27,6 +27,10 @@
     --dur:350ms;
     --dur-fast:200ms;
     --dur-slow:520ms;
+    /* Eigene Zeit nur fuer den Aufbau der Statistik. Bewusst getrennt von
+       --dur-slow: an dem haengen auch die Fortschrittsbalken in Seitenleiste
+       und Kopfbereich, und die sollen beim Abhaken flott bleiben. */
+    --dur-stat:780ms;
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
@@ -74,15 +78,63 @@
   .year-btn-mini:hover{border-color:#3a4152;transform:translateY(-1px)}
   .year-btn-mini:active{transform:translateY(0) scale(.94)}
 
+  /* ---------- Schnellmodus ---------- */
+  .quick-btn{
+    margin-left:auto;border:1px solid var(--line);background:var(--panel-2);color:var(--muted);
+    border-radius:999px;padding:5px 11px;font-size:11.5px;font-weight:700;white-space:nowrap;
+    transition:border-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease);
+  }
+  .quick-btn:hover{color:var(--text);border-color:#3a4152}
+  body.quick .quick-btn{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  /* Auswahlkreis rechts auf der Karte -- nur im Schnellmodus sichtbar */
+  .habit-pick{
+    position:absolute;right:12px;top:50%;transform:translateY(-50%) scale(.7);
+    width:30px;height:30px;border-radius:50%;border:2px solid var(--line);
+    background:var(--panel);display:flex;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;
+    transition:opacity var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease),
+               background-color var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease);
+  }
+  body.quick .habit-pick{opacity:1;transform:translateY(-50%) scale(1)}
+  .habit-pick svg{width:17px;height:17px;opacity:0;transition:opacity var(--dur-fast) var(--ease);color:#fff}
+  .habit-card.picked .habit-pick{background:var(--hc);border-color:var(--hc)}
+  .habit-card.picked .habit-pick svg{opacity:1}
+  /* Platz fuer den Kreis schaffen, damit lange Namen nicht darunter laufen */
+  body.quick .habit-card{padding-right:52px}
+  body.quick .habit-card{cursor:pointer}
+
+  .quick-bar{
+    display:none;align-items:center;gap:8px;padding:10px 12px;
+    border-top:1px solid var(--line);background:var(--panel);
+  }
+  body.quick .quick-bar{display:flex}
+  .quick-bar #quickCount{color:var(--muted);font-size:12.5px;font-weight:700;white-space:nowrap;flex:1}
+  .quick-bar .btn{padding:8px 12px;font-size:12.5px}
+  /* Habits, die heute laut Einstellung nicht anstehen */
+  .habit-card.notoday{opacity:.4}
+  body.quick .habit-card.notoday .habit-pick{border-style:dashed;opacity:.5}
+
   .habit-list{overflow:auto;flex:1;padding:10px}
+  /* --hc ist die Farbe des jeweiligen Habits. Sie toent den Kartenhintergrund
+     leicht ein und faerbt den Rahmen der Auswahl -- dadurch wirkt die Liste
+     nicht mehr durchgehend gleich dunkelgrau. */
   .habit-card{
-    background:var(--panel-2);border:1px solid var(--line);
+    background:color-mix(in srgb, var(--hc, var(--accent)) 7%, var(--panel-2));
+    border:1px solid var(--line);
     border-radius:12px;padding:12px 12px;margin-bottom:10px;cursor:pointer;
-    transition:border-color .15s,transform .05s,box-shadow .15s;position:relative;
+    transition:border-color .15s,transform .05s,box-shadow .15s,background-color .15s;position:relative;
     box-shadow:var(--card-shadow);
   }
-  .habit-card:hover{border-color:#3a4152;box-shadow:0 4px 14px rgba(0,0,0,.3),0 0 0 1px #3a4152;transform:translateY(-1px)}
-  .habit-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset,var(--card-shadow)}
+  .habit-card:hover{
+    border-color:color-mix(in srgb, var(--hc, var(--accent)) 45%, var(--line));
+    box-shadow:0 4px 14px rgba(0,0,0,.3);transform:translateY(-1px);
+  }
+  .habit-card.active{
+    border-color:var(--hc, var(--accent));
+    background:color-mix(in srgb, var(--hc, var(--accent)) 13%, var(--panel-2));
+    box-shadow:0 0 0 1px var(--hc, var(--accent)) inset, var(--card-shadow);
+  }
   .habit-card{cursor:grab}
   .habit-card:active{cursor:grabbing}
   .habit-card.dragging{opacity:.4}
@@ -109,6 +161,8 @@
   .btn.primary:hover{filter:brightness(1.08);box-shadow:0 4px 16px rgba(79,140,255,.45)}
   .btn-row{display:flex;gap:8px}
   .btn-row .btn{flex:1}
+  /* Am Mac steht der Text, am Handy nur das Symbol (siehe Media Query unten) */
+  .btn .ic-only{display:none}
 
   /* Main */
   .main{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:auto}
@@ -116,7 +170,8 @@
     display:flex;align-items:center;gap:14px;padding:18px 26px;border-bottom:1px solid var(--line);
     position:sticky;top:0;background:var(--bg);z-index:5;flex-wrap:wrap;
   }
-  .topbar .title{font-size:20px;font-weight:700;display:flex;align-items:center;gap:10px}
+  .topbar .title{font-size:20px;font-weight:700;display:flex;align-items:center;gap:10px;min-width:0}
+  .title-text{display:flex;flex-direction:column;min-width:0;line-height:1.2}
   .mobile-back{display:none}
   .spacer{flex:1}
   .year-nav{display:flex;align-items:center;gap:6px}
@@ -129,23 +184,32 @@
   .year-nav button:active{transform:translateY(0) scale(.94)}
   .year-nav .yr{font-weight:700;font-size:17px;min-width:64px;text-align:center;font-variant-numeric:tabular-nums}
 
-  .goal-wrap{padding:20px 26px 6px;position:relative;overflow:hidden}
+  /* Bleibt beim Scrollen unter der Kopfzeile stehen. --topbar-h wird beim
+     Zeichnen gemessen, weil die Kopfzeile je nach Bildschirmbreite ein- oder
+     zweizeilig ist -- ein fester Wert wuerde hier zwangslaeufig danebenliegen. */
+  .goal-wrap{
+    padding:10px 26px 12px;position:sticky;top:var(--topbar-h,64px);z-index:4;
+    overflow:hidden;background:var(--bg);border-bottom:1px solid var(--line);
+  }
   .goal-wrap::before{
     content:"";position:absolute;top:-70px;left:-70px;width:280px;height:280px;
     background:var(--glow,transparent);border-radius:50%;filter:blur(50px);
     opacity:.28;pointer-events:none;z-index:0;
   }
   .goal-wrap > *{position:relative;z-index:1}
-  .goal-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-  .goal-head .big{font-size:15px;color:var(--muted)}
-  .goal-head .big b{color:var(--text);font-size:22px;font-variant-numeric:tabular-nums}
-  .goal-bar{height:12px;border-radius:7px;background:var(--panel-2);margin-top:14px;overflow:hidden;border:1px solid var(--line)}
+  .goal-head{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;min-width:0}
+  .goal-head .big{font-size:13px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .goal-head .big b{color:var(--text);font-size:19px}
+  .goal-rest{
+    margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap;
+    font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;
+  }
+  .goal-bar{height:8px;border-radius:5px;background:var(--panel-2);margin-top:9px;overflow:hidden;border:1px solid var(--line)}
   .goal-bar > span{display:block;height:100%;transition:width var(--dur-slow) var(--ease)}
-  .goal-pct{color:var(--muted);font-size:12.5px;margin-top:8px;font-variant-numeric:tabular-nums}
   .streak-badge{
-    display:inline-flex;align-items:center;gap:5px;background:var(--panel-2);
-    border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600;
-    font-variant-numeric:tabular-nums;
+    display:inline-flex;align-items:center;gap:4px;background:var(--panel-2);
+    border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:700;
+    font-variant-numeric:tabular-nums;white-space:nowrap;
   }
   .streak-mini{color:var(--muted);font-weight:700;margin-left:6px;font-variant-numeric:tabular-nums}
 
@@ -158,6 +222,31 @@
 
   @keyframes cellPop{ 0%{transform:scale(1)} 40%{transform:scale(1.13)} 100%{transform:scale(1)} }
   .pop{animation:cellPop var(--dur-fast) var(--ease)}
+
+  /* Abhaken: kurzer heller Puls in der Habit-Farbe, danach laeuft ein
+     Leuchtrand nach aussen und blendet dabei aus. --pulse wird beim Klick
+     auf die Farbe des jeweiligen Habits gesetzt. */
+  @keyframes checkPulse{
+    0%{
+      transform:scale(1); filter:brightness(1);
+      box-shadow:0 0 0 0 color-mix(in srgb, var(--pulse) 65%, transparent),
+                 0 0 0 0 color-mix(in srgb, var(--pulse) 60%, transparent);
+    }
+    32%{
+      transform:scale(1.17); filter:brightness(1.4);
+      box-shadow:0 0 0 5px color-mix(in srgb, var(--pulse) 38%, transparent),
+                 0 0 18px 3px color-mix(in srgb, var(--pulse) 55%, transparent);
+    }
+    100%{
+      transform:scale(1); filter:brightness(1);
+      box-shadow:0 0 0 15px color-mix(in srgb, var(--pulse) 0%, transparent),
+                 0 0 22px 6px color-mix(in srgb, var(--pulse) 0%, transparent);
+    }
+  }
+  .pulse-on{animation:checkPulse 620ms var(--ease); z-index:3; position:relative}
+  /* Abwaehlen bleibt bewusst leiser -- ein Widerruf soll nicht gefeiert werden */
+  @keyframes checkUndo{ 0%{transform:scale(1)} 40%{transform:scale(.9)} 100%{transform:scale(1)} }
+  .pulse-off{animation:checkUndo var(--dur-fast) var(--ease)}
   @keyframes numPulse{ 0%{transform:scale(1);color:var(--text)} 35%{transform:scale(1.11);color:var(--accent)} 100%{transform:scale(1);color:var(--text)} }
   .num-pulse{display:inline-block;animation:numPulse var(--dur) var(--ease)}
 
@@ -165,20 +254,31 @@
      Die Breite ist gedeckelt, weil die Kaestchen quadratisch sind: ohne Deckel
      wuerden sie am Mac ueber die volle Spaltenbreite wachsen und groesser werden
      als die Tage im Monatskalender darunter. */
-  .band-box{display:flex;gap:8px;align-items:stretch;max-width:450px}
+  /* --bcw ist die per JavaScript berechnete Kantenlaenge eines Kaestchens.
+     Zeilen und Spalten benutzen denselben Wert, dadurch bleiben die Kaestchen
+     quadratisch, ohne dass aspect-ratio im Scrollbereich noetig waere. */
+  .band-box{display:flex;gap:8px;align-items:flex-start;max-width:560px}
   .band-wd{
-    display:grid;grid-template-rows:repeat(7,1fr);gap:4px;
-    color:var(--muted);font-size:9.5px;font-weight:700;min-width:20px;
+    display:grid;grid-template-rows:repeat(7,var(--bcw,15px));gap:3px;margin-top:18px;
+    color:var(--muted);font-size:9.5px;font-weight:700;min-width:18px;
   }
   .band-wd span{display:flex;align-items:center}
-  .band-right{flex:1;min-width:0}
-  .band-months{
-    display:grid;gap:4px;color:var(--muted);font-size:10.5px;font-weight:700;
-    margin-bottom:5px;height:13px;
+  .band-scroll{
+    flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;
+    overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;
   }
-  .band-grid{display:grid;gap:4px}
+  .band-scroll::-webkit-scrollbar{display:none}
+  .band-months{
+    display:grid;grid-template-columns:repeat(var(--cols),var(--bcw,15px));gap:3px;
+    color:var(--muted);font-size:10.5px;font-weight:700;margin-bottom:5px;height:13px;
+  }
+  .band-months span{white-space:nowrap;overflow:visible}
+  .band-grid{
+    display:grid;grid-template-columns:repeat(var(--cols),var(--bcw,15px));
+    grid-auto-rows:var(--bcw,15px);gap:3px;
+  }
   .bcell{
-    aspect-ratio:1;border-radius:4px;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:3px;background:var(--panel-2);border:1px solid var(--line);
     box-shadow:inset 0 1px 2px rgba(0,0,0,.32);padding:0;cursor:pointer;
     transition:transform .06s, background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
   }
@@ -253,9 +353,18 @@
   .ycell.today{outline:1.5px solid var(--today);outline-offset:1px}
   .yfoot{margin-top:9px;color:var(--muted);font-size:11px;text-align:center;font-variant-numeric:tabular-nums}
 
-  .legend{display:flex;gap:18px;color:var(--muted);font-size:12px;margin:18px 0 0;flex-wrap:wrap}
-  .legend .k{display:flex;align-items:center;gap:7px}
-  .legend .sw{width:14px;height:14px;border-radius:4px;border:1px solid var(--line)}
+  /* Einmaliger Bedienhinweis statt dauerhafter Legende */
+  .cal-tip{
+    display:flex;align-items:flex-start;gap:10px;margin:20px 0 0;padding:11px 12px;
+    border-radius:11px;border:1px solid var(--line);background:var(--panel);
+    color:var(--muted);font-size:12.5px;line-height:1.45;
+  }
+  .cal-tip button{
+    margin-left:auto;flex:none;width:24px;height:24px;border-radius:7px;padding:0;
+    border:1px solid var(--line);background:var(--panel-2);color:var(--muted);font-size:12px;
+    transition:color var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease);
+  }
+  .cal-tip button:hover{color:var(--text);border-color:#3a4152}
 
   .empty{padding:60px 26px;color:var(--muted);max-width:560px}
   .empty h2{color:var(--text);font-weight:700}
@@ -301,6 +410,61 @@
   .color-custom input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
   .color-custom-label{font-size:12px;color:var(--muted)}
   .swatches button.sel{border-color:#fff;transform:scale(1.08)}
+  /* Symbolauswahl */
+  .icon-picker{
+    display:grid;grid-template-columns:repeat(8,1fr);gap:6px;
+    max-height:132px;overflow-y:auto;padding-right:2px;
+  }
+  .icon-picker button{
+    aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:0;
+    border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--muted);
+    transition:border-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease);
+  }
+  .icon-picker button{color:var(--muted)}
+  .icon-picker button:hover{transform:scale(1.08);color:var(--text)}
+  /* Der Rahmen der Auswahl uebernimmt ueber "inherit" die Farbe des Rasters,
+     die beim Zeichnen auf die gewaehlte Habit-Farbe gesetzt wird. */
+  .icon-picker button.sel{color:inherit;border-color:currentColor;background:color-mix(in srgb, currentColor 16%, var(--panel-2))}
+
+  /* Symbol in der Habit-Liste, an der Stelle des farbigen Punktes */
+  .habit-icon{
+    width:26px;height:26px;min-width:26px;border-radius:9px;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    background:color-mix(in srgb, currentColor 18%, transparent);
+    border:1px solid color-mix(in srgb, currentColor 32%, transparent);
+  }
+
+  /* Beschreibung unter dem Habit-Namen. Wird gar nicht erzeugt, wenn leer --
+     dadurch kostet ein Habit ohne Beschreibung keinen Millimeter Platz. */
+  .habit-note{
+    color:var(--muted);font-size:12.5px;font-weight:500;line-height:1.4;
+    margin-top:3px;max-width:60ch;
+  }
+
+  /* Auswahl von Wochentagen und Monaten */
+  .chips-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px}
+  .chips-all{background:none;border:none;color:var(--accent);font-size:11.5px;font-weight:700;padding:0}
+  .chips{display:flex;flex-wrap:wrap;gap:5px}
+  .chips button{
+    min-width:36px;padding:6px 7px;border-radius:9px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--muted);font-size:11.5px;font-weight:700;
+    transition:border-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease);
+  }
+  .chips button.on{
+    border-color:var(--accent);color:var(--text);
+    background:color-mix(in srgb, var(--accent) 20%, var(--panel-2));
+  }
+  .plan-sum{color:var(--muted);font-size:12px;margin-top:8px}
+
+  /* Tage, an denen der Habit laut Einstellung gar nicht "spielt".
+     Sichtbar, damit der Wochenrhythmus erkennbar bleibt, aber deutlich
+     zurueckgenommen und nicht anklickbar. */
+  .mcell.rest{background:transparent;border-style:dashed;color:var(--muted);opacity:.45;cursor:default;box-shadow:none}
+  .mcell.rest:hover{transform:none}
+  .bcell.rest{opacity:.3;cursor:default;box-shadow:none}
+  .bcell.rest:hover{transform:none}
+  .ycell.rest{opacity:.3}
+
   .modal-actions{display:flex;gap:9px;margin-top:16px}
   .modal-actions .btn{flex:1}
   .btn.ghost-danger{border-color:#3a2530;color:#ff8a8a;background:transparent}
@@ -384,11 +548,33 @@
   }
   .chart-empty{color:var(--muted);font-size:13px;padding:26px 4px;text-align:center}
 
+  /* Hochrechnung */
+  .fc-row{display:flex;align-items:center;gap:14px}
+  .fc-big{font-size:36px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .fc-txt{color:var(--muted);font-size:12.5px;line-height:1.5}
+  .fc-bar{height:8px;border-radius:5px;background:#0c0e12;margin-top:13px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
+  .fc-bar > span{display:block;height:100%;border-radius:5px}
+
+  /* Kleine Kennzahlen nebeneinander */
+  .mini-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .mini-stat{text-align:center}
+  .ms-val{font-size:23px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+  .ms-lbl{color:var(--muted);font-size:11.5px;margin-top:5px;line-height:1.35}
+
+  /* Rangliste der Habits */
+  .rank{display:flex;flex-direction:column;gap:9px}
+  .rank-row{display:flex;align-items:center;gap:9px;min-width:0}
+  .rank-no{color:var(--muted);font-size:11.5px;font-weight:700;min-width:14px;font-variant-numeric:tabular-nums}
+  .rank-name{font-size:13px;font-weight:600;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:38%}
+  .rank-bar{flex:1;height:7px;border-radius:5px;background:#0c0e12;overflow:hidden;min-width:40px;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
+  .rank-bar > span{display:block;height:100%;border-radius:5px}
+  .rank-pct{color:var(--muted);font-size:12px;font-weight:700;min-width:34px;text-align:right;font-variant-numeric:tabular-nums}
+
   /* Monatsbalken */
   .mbars{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;align-items:end;height:158px}
   .mbar{display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:7px;min-width:0}
   .mbar .track{flex:1;display:flex;align-items:flex-end;border-radius:7px;background:#0c0e12;box-shadow:inset 0 1px 3px rgba(0,0,0,.4);overflow:hidden}
-  .mbar .fill{width:100%;height:0;border-radius:7px;transition:height var(--dur-slow) var(--ease)}
+  .mbar .fill{width:100%;height:0;border-radius:7px;transition:height var(--dur-stat) var(--ease)}
   .mbar .cap{text-align:center;color:var(--muted);font-size:10.5px;font-weight:600}
   .mbar .pctv{text-align:center;color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums;opacity:0;transition:opacity .3s}
   .mbar:hover .pctv{opacity:1}
@@ -525,6 +711,18 @@
     .brand h1{font-size:17px}
     .brand p{font-size:11.5px}
 
+    /* Kopfzeile auf EINE Zeile: Zurueck und Bearbeiten nur als Symbol, die
+       Jahrespfeile entfallen -- die stehen in der Uebersicht ohnehin schon
+       ueber der Habit-Liste. Vorher brauchte die Zeile bis zu 186 Pixel. */
+    .topbar{flex-wrap:nowrap;padding:10px 14px;gap:9px}
+    .topbar .year-nav{display:none}
+    .topbar .title{font-size:17px;overflow:hidden}
+    .topbar .title-text > span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .habit-note{font-size:11.5px}
+    .btn .lbl{display:none}
+    .btn .ic-only{display:inline;font-size:17px;line-height:1}
+    .mobile-back,#editBtn{padding:0;width:36px;min-width:36px;height:36px;justify-content:center}
+
     /* Drucken ist vom Handy aus selten sinnvoll */
     #printBtn{display:none !important}
 
@@ -577,7 +775,7 @@
     .month-grid{gap:5px}
     .mcell{border-radius:12px;font-size:14px;gap:2px}
     .mcell .dt{width:4px;height:4px}
-    .band-grid,.band-wd,.band-months{gap:3px}
+    .band-box{max-width:none}
     .wd{font-size:11px}
 
     /* Statistik kompakter */
@@ -605,6 +803,12 @@
       <button id="sidebarPrevYear" class="year-btn-mini">&#8249;</button>
       Habits f&#252;r <b id="sidebarYear">2026</b>
       <button id="sidebarNextYear" class="year-btn-mini">&#8250;</button>
+      <button class="quick-btn" id="quickBtn" title="Mehrere Habits f&#252;r heute abhaken">&#9889; Schnell</button>
+    </div>
+    <div class="quick-bar" id="quickBar">
+      <span id="quickCount">0 ausgew&#228;hlt</span>
+      <button class="btn" id="quickCancel">Abbrechen</button>
+      <button class="btn primary" id="quickApply">&#220;bernehmen</button>
     </div>
     <div class="habit-list" id="habitList"></div>
     <div class="sidebar-foot">
@@ -619,7 +823,7 @@
 
   <main class="main">
     <div class="topbar">
-      <button class="btn ghost small mobile-back" id="backBtn">&#8249; &#220;bersicht</button>
+      <button class="btn ghost small mobile-back" id="backBtn"><span class="ic-only">&#8249;</span><span class="lbl">&#8249; &#220;bersicht</span></button>
       <div class="title" id="mainTitle">Willkommen</div>
       <div class="spacer"></div>
       <div class="seg no-print" id="viewSwitch" style="display:none">
@@ -632,7 +836,7 @@
         <span class="yr" id="yearLabel">2026</span>
         <button id="nextYear">&#8250;</button>
       </div>
-      <button class="btn no-print" id="editBtn" style="display:none">Bearbeiten</button>
+      <button class="btn no-print" id="editBtn" style="display:none"><span class="ic-only">&#9998;</span><span class="lbl">Bearbeiten</span></button>
       <button class="btn no-print" id="printBtn" style="display:none">&#128424; Drucken / PDF</button>
       <button class="btn icon-btn no-print desktop-only" id="settingsBtn" title="Einstellungen" aria-label="Einstellungen"></button>
     </div>
@@ -660,6 +864,17 @@
         <input type="text" id="mName" placeholder="z.B. Sport, Lesen, 3 Liter Wasser" maxlength="60">
       </div>
       <div class="field">
+        <label>Beschreibung <span style="font-weight:400;text-transform:none">(optional)</span></label>
+        <input type="text" id="mNote" placeholder="z.B. Z&#228;hne putzen, Gesicht waschen" maxlength="120">
+      </div>
+      <div class="field">
+        <div class="chips-head">
+          <label style="margin:0">Symbol</label>
+          <button class="chips-all" id="mIconNone" type="button">ohne</button>
+        </div>
+        <div class="icon-picker" id="mIcons"></div>
+      </div>
+      <div class="field">
         <label id="goalLabel">Ziel</label>
         <div class="goal-mode" id="goalMode">
           <button data-mode="year" class="sel">Ganzes Jahr</button>
@@ -667,6 +882,21 @@
         </div>
         <input type="number" id="mTarget" min="1" max="366" value="100" style="display:none">
         <div id="goalHint" style="color:var(--muted);font-size:12px">Ziel = alle Tage des Jahres (365 bzw. 366 im Schaltjahr).</div>
+      </div>
+      <div class="field">
+        <div class="chips-head">
+          <label style="margin:0">Wochentage</label>
+          <button class="chips-all" id="mWdAll" type="button">alle</button>
+        </div>
+        <div class="chips" id="mWeekdays"></div>
+      </div>
+      <div class="field">
+        <div class="chips-head">
+          <label style="margin:0">Monate</label>
+          <button class="chips-all" id="mMoAll" type="button">alle</button>
+        </div>
+        <div class="chips" id="mMonths"></div>
+        <div class="plan-sum" id="planSum"></div>
       </div>
       <div class="field">
         <label>Farbe</label>
@@ -763,12 +993,19 @@
   let editingId = null;
   let modalColor = COLORS[0];
   let modalGoalMode = "year";
+  let modalWeekdays = [0,1,2,3,4,5,6];
+  let modalMonths = [0,1,2,3,4,5,6,7,8,9,10,11];
+  let modalIcon = null;
+  // Schnellmodus: Auswahl wird gesammelt und erst beim \u00dcbernehmen geschrieben.
+  let quickMode = false;
+  let quickPicked = null; // Set von Habit-IDs
   let lastClickedKey = null; // { habitId, key } -- Anker f\u00fcr Umschalt+Klick-Bereichsauswahl
 
   // Ansicht: "cal" = Jahreskalender, "stats" = Statistik. Am Handy \u00fcber die
   // Tab-Leiste unten, am Mac \u00fcber den Pillen-Umschalter in der Kopfzeile.
   const VIEW_KEY = "habitTracker.view";
   const CALMODE_KEY = "habitTracker.calMode";
+  const TIP_KEY = "habitTracker.tipSeen";
   const ANIM_KEY = "habitTracker.anim";
   const SCOPE_KEY = "habitTracker.statsScope";
   const RANGE_KEY = "habitTracker.statsRange";
@@ -796,6 +1033,44 @@
     flame:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c.4 3 2.4 4.3 3.8 6.1a7.2 7.2 0 0 1 1.6 4.6 5.4 5.4 0 0 1-10.8 0c0-1.6.5-3 1.3-4.1.3 1 .8 1.7 1.6 2.1-.2-3.2.9-6.3 2.5-8.7Z"/></svg>',
     gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg>'
   };
+  // Symbole f\u00fcr Habits. Bewusst als reine Strichzeichnungen ohne eigene Farbe --
+  // dadurch nehmen sie \u00fcber currentColor die Farbe des jeweiligen Habits an.
+  const HABIT_ICONS = {
+    hantel:'<path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/>',
+    buch:'<path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v16H5.5A1.5 1.5 0 0 0 4 20.5V4.5Z"/><path d="M8 3v14"/>',
+    wasser:'<path d="M7 3h10l-1.2 16.2A2 2 0 0 1 13.8 21h-3.6a2 2 0 0 1-2-1.8L7 3Z"/><path d="M7.6 11h8.8"/>',
+    herz:'<path d="M12 20s-7-4.4-7-9.3A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.7C19 15.6 12 20 12 20Z"/>',
+    apfel:'<path d="M12 8c-3-2.5-7-1-7 3.5C5 16 8 21 12 21s7-5 7-9.5C19 7 15 5.5 12 8Z"/><path d="M12 8V5m0 0c0-1.2 1-2 2.2-2"/>',
+    bett:'<path d="M3 18v-8m0 4h18v4M3 14V8m18 6v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="10.5" r="1.8"/>',
+    laufen:'<path d="M13.5 5.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/><path d="M8 21l3-5-2.5-3 1-5 3.5 2 2 2.5 3 .5M5.5 10l3-2"/>',
+    meditation:'<circle cx="12" cy="5" r="2"/><path d="M12 9v5m0 0-5 2.5m5-2.5 5 2.5M6.5 20h11"/>',
+    telefon:'<path d="M6 3h3l1.5 4-2 1.5a12 12 0 0 0 5.5 5.5l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4 5a2 2 0 0 1 2-2Z"/>',
+    stift:'<path d="M4 20h4L20 8l-4-4L4 16v4Z"/><path d="M14 6l4 4"/>',
+    musik:'<path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="16" r="2"/>',
+    geld:'<circle cx="12" cy="12" r="8"/><path d="M12 7v10M9.5 9.8c0-1 1.1-1.8 2.5-1.8s2.5.8 2.5 1.8-1.1 1.7-2.5 1.7-2.5.8-2.5 1.9 1.1 1.9 2.5 1.9 2.5-.9 2.5-1.9"/>',
+    sonne:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    mond:'<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/>',
+    fahrrad:'<circle cx="6" cy="17" r="3.5"/><circle cx="18" cy="17" r="3.5"/><path d="M6 17l4-8h4l4 8M9 9h5m1 0 1.5 3"/>',
+    zahn:'<path d="M6 4c2 0 2 1.5 6 1.5S16 4 18 4c1.5 0 2 1.5 2 3 0 3.5-1.5 4.5-2 8-.4 2.8-1 4-2 4s-1.3-1.5-1.6-3.5C14.2 14 13.4 13 12 13s-2.2 1-2.4 2.5C9.3 17.5 9 19 8 19s-1.6-1.2-2-4C5.5 11.5 4 10.5 4 7c0-1.5.5-3 2-3Z"/>',
+    dusche:'<path d="M4 20V7a3 3 0 0 1 6 0v1m0 0h11m-11 0v0"/><path d="M13 12v1m4-1v1m-8 3v1m4-1v1m4-1v1"/>',
+    tasse:'<path d="M4 8h13v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8Z"/><path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M7 3v2m4-2v2"/>',
+    pflanze:'<path d="M12 21v-8"/><path d="M12 13c0-3 2-6 6-6 0 3-2 6-6 6Zm0 0c0-3-2-6-6-6 0 3 2 6 6 6Z"/>',
+    gewicht:'<path d="M8 6h8l2 14H6L8 6Z"/><path d="M9.5 6V4.5A2.5 2.5 0 0 1 12 2a2.5 2.5 0 0 1 2.5 2.5V6"/>',
+    haken:'<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>',
+    stern:'<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9-5.3-2.9-5.3 2.9 1.1-5.9L3.5 9.7l5.9-.8L12 3.5Z"/>',
+    ziel:'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>',
+    kalender:'<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4m8-4v4"/>'
+  };
+  const ICON_KEYS = Object.keys(HABIT_ICONS);
+  // Baut ein fertiges SVG. "currentColor" sorgt daf\u00fcr, dass die umgebende
+  // Textfarbe durchschl\u00e4gt -- so wird jedes Symbol automatisch habit-farbig.
+  function iconSvg(name, size){
+    const p = HABIT_ICONS[name];
+    if(!p) return "";
+    return '<svg viewBox="0 0 24 24" width="'+(size||20)+'" height="'+(size||20)+'" fill="none" '+
+      'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>';
+  }
+
   const TAB_ICONS = {
     habits:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2.4"/><rect x="13" y="3" width="8" height="8" rx="2.4"/><rect x="3" y="13" width="8" height="8" rx="2.4"/><rect x="13" y="13" width="8" height="8" rx="2.4"/></svg>',
     cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3.2"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="8.5" cy="15" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="15" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15" r="1.1" fill="currentColor" stroke="none"/></svg>',
@@ -898,10 +1173,49 @@
   // ---------- Model helpers ----------
   function habitsOfYear(y){ return state.habits.filter(h=>h.year===y).sort((a,b)=>(a.order??0)-(b.order??0)); }
   function getHabit(id){ return state.habits.find(h=>h.id===id); }
-  function targetFor(h){ return h.goalMode==="custom" ? h.target : daysInYear(h.year); }
+  // ---------- Geplante Tage (Wochentage / Monate pro Habit) ----------
+  // Fehlende oder leere Listen bedeuten "keine Einschr\u00e4nkung". Dadurch
+  // verhalten sich alte Sicherungen ohne diese Felder unver\u00e4ndert.
+  function plansWeekday(h, wd){ return !h.weekdays || !h.weekdays.length || h.weekdays.indexOf(wd) >= 0; }
+  function plansMonth(h, m){ return !h.months || !h.months.length || h.months.indexOf(m) >= 0; }
+  function isPlanned(h, date){
+    return plansMonth(h, date.getMonth()) && plansWeekday(h, wdMon(date));
+  }
+  function isPlannedYMD(h, y, m, d){
+    return plansMonth(h, m) && plansWeekday(h, wdMon(new Date(y,m,d)));
+  }
+  function hasPlanLimit(h){
+    return (h.weekdays && h.weekdays.length && h.weekdays.length<7) ||
+           (h.months && h.months.length && h.months.length<12);
+  }
+  // Wie viele Tage des Jahres sind \u00fcberhaupt vorgesehen?
+  function plannedDaysInYear(h){
+    let c = 0;
+    for(let m=0;m<12;m++){
+      if(!plansMonth(h,m)) continue;
+      const dim = daysInMonth(h.year,m);
+      for(let d=1; d<=dim; d++) if(plansWeekday(h, wdMon(new Date(h.year,m,d)))) c++;
+    }
+    return c;
+  }
+
+  // Bei "Ganzes Jahr" ist das Ziel nicht mehr stur 365, sondern die Zahl der
+  // geplanten Tage -- sonst w\u00e4re ein Habit, der nur Mo-Fr l\u00e4uft, von vornherein
+  // unerreichbar.
+  function targetFor(h){ return h.goalMode==="custom" ? h.target : plannedDaysInYear(h); }
+
+  // Z\u00e4hlt nur Eintr\u00e4ge an geplanten Tagen. Wer nachtr\u00e4glich Tage aus dem Plan
+  // nimmt, verliert die Eintr\u00e4ge nicht -- sie z\u00e4hlen nur nicht mehr mit und
+  // kommen zur\u00fcck, sobald der Tag wieder im Plan ist.
   function doneCount(h){
     let c=0; const days=h.days||{};
-    for(const k in days){ if(days[k]) c++; }
+    const frei = !hasPlanLimit(h);
+    for(const k in days){
+      if(!days[k]) continue;
+      if(frei){ c++; continue; }
+      const t = k.split("-");
+      if(isPlannedYMD(h, +t[0], +t[1], +t[2])) c++;
+    }
     return c;
   }
   // Aktuelle Serie: l\u00e4uft r\u00fcckw\u00e4rts ab heute (oder gestern, falls heute noch
@@ -911,14 +1225,27 @@
     const realNow = new Date();
     if(h.year !== realNow.getFullYear()) return 0;
     const days = h.days||{};
+    const yStart = new Date(h.year, 0, 1);
     const isDone = (d)=> !!days[key(d.getFullYear(), d.getMonth(), d.getDate())];
-    let cursor = new Date(realNow.getFullYear(), realNow.getMonth(), realNow.getDate());
-    if(!isDone(cursor)){
+    // Nicht geplante Tage werden \u00fcbersprungen, nicht gewertet: wer nur Mo-Fr
+    // l\u00e4uft, verliert am Wochenende seine Serie nicht.
+    const zurueckAufGeplant = (d)=>{
+      while(d >= yStart && !isPlanned(h, d)) d.setDate(d.getDate()-1);
+      return d;
+    };
+
+    let cursor = zurueckAufGeplant(new Date(realNow.getFullYear(), realNow.getMonth(), realNow.getDate()));
+    // Ein heute noch offener Tag soll die Serie nicht sofort auf 0 setzen --
+    // deshalb in dem Fall beim letzten geplanten Tag davor weitermachen.
+    if(cursor >= yStart && !isDone(cursor)){
       cursor.setDate(cursor.getDate()-1);
-      if(!isDone(cursor)) return 0;
+      cursor = zurueckAufGeplant(cursor);
+      if(cursor < yStart || !isDone(cursor)) return 0;
     }
     let count=0;
-    while(isDone(cursor)){
+    while(cursor >= yStart){
+      if(!isPlanned(h, cursor)){ cursor.setDate(cursor.getDate()-1); continue; }
+      if(!isDone(cursor)) break;
       count++;
       cursor.setDate(cursor.getDate()-1);
     }
@@ -970,17 +1297,38 @@
       const streak = currentStreak(h);
       const card = document.createElement("div");
       card.className = "habit-card"+(h.id===selectedId?" active":"")+(intro?" intro":"");
+      card.style.setProperty("--hc", h.color);
       if(intro) card.style.setProperty("--d", (idx*55)+"ms");
       card.draggable = true;
       card.dataset.id = h.id;
       card.innerHTML =
-        '<div class="habit-top"><span class="dot" style="background:'+h.color+'"></span>'+
+        '<div class="habit-top">'+
+        (h.icon
+          ? '<span class="habit-icon" style="color:'+h.color+'">'+iconSvg(h.icon,15)+'</span>'
+          : '<span class="dot" style="background:'+h.color+'"></span>')+
         '<span class="habit-name">'+escapeHtml(h.name)+'</span></div>'+
         '<div class="habit-count">'+done+' von '+target+' erf\u00fcllt \u00b7 '+pct+'%'+
         (streak>0 ? '<span class="streak-mini">\ud83d\udd25 '+streak+'</span>' : '')+'</div>'+
-        '<div class="bar"><span data-pct="'+pct+'" style="width:'+(intro?0:pct)+'%;'+gradientStyle(h.color)+'"></span></div>';
+        '<div class="bar"><span data-pct="'+pct+'" style="width:'+(intro?0:pct)+'%;'+gradientStyle(h.color)+'"></span></div>'+
+        '<span class="habit-pick">'+ICONS.check+'</span>';
+      // Im Schnellmodus: heute nicht eingeplante Habits sind nicht ausw\u00e4hlbar
+      if(quickMode){
+        if(!isPlanned(h, heute())) card.classList.add("notoday");
+        else if(quickPicked.has(h.id)) card.classList.add("picked");
+      }
       card.addEventListener("click", ()=>{
         if(card.classList.contains("dragging")) return;
+        // Im Schnellmodus wird nur ausgew\u00e4hlt, nicht ge\u00f6ffnet
+        if(quickMode){
+          if(card.classList.contains("notoday")){
+            toast("\u201e"+h.name+"\u201c steht heute nicht an.");
+            return;
+          }
+          if(quickPicked.has(h.id)) quickPicked.delete(h.id); else quickPicked.add(h.id);
+          card.classList.toggle("picked", quickPicked.has(h.id));
+          updateQuickBar();
+          return;
+        }
         // Am Handy schiebt sich die Detailansicht von rechts herein, am Mac
         // wandert der Inhalt nach oben. Bewegt wird dabei immer #content und
         // nie .main: .main ist ein direktes Kind von <body>, und ein seitlich
@@ -1079,9 +1427,10 @@
     cell.classList.toggle("done", done);
     cell.style.backgroundColor = done ? color : "";
     cell.style.backgroundImage = done ? "linear-gradient(135deg,"+color+",color-mix(in srgb,"+color+" 65%,white))" : "";
-    cell.classList.remove("pop");
+    cell.style.setProperty("--pulse", color);
+    cell.classList.remove("pulse-on","pulse-off");
     void cell.offsetWidth; // Reflow erzwingen, damit die Animation bei schnellen Klicks neu startet
-    cell.classList.add("pop");
+    cell.classList.add(done ? "pulse-on" : "pulse-off");
   }
   // L\u00e4sst eine Zahl sanft von ihrem aktuellen Anzeigewert zum neuen Wert hochz\u00e4hlen,
   // statt hart zu springen -- kleines, aber sp\u00fcrbares Detail bei jedem Abhaken.
@@ -1115,7 +1464,8 @@
     const streak = currentStreak(h);
     animateNumber(statDone, done);
     document.getElementById("goalBarFill").style.width = pct+"%";
-    document.getElementById("goalPctText").textContent = pct+"% geschafft \u00b7 noch "+Math.max(0,target-done)+" Tage bis zum Ziel";
+    document.getElementById("goalPctText").textContent = pct+"%";
+    document.getElementById("goalRest").textContent = "noch "+Math.max(0,target-done)+" Tage";
     const badge = document.getElementById("streakBadge");
     badge.style.display = streak>0 ? "inline-flex" : "none";
     animateNumber(document.getElementById("streakVal"), streak);
@@ -1140,7 +1490,8 @@
     if(a > b){ const tmp=a; a=b; b=tmp; }
     const cursor = new Date(a);
     while(cursor <= b){
-      h.days[key(cursor.getFullYear(), cursor.getMonth(), cursor.getDate())] = true;
+      // Nicht geplante Tage im Bereich werden \u00fcbersprungen
+      if(isPlanned(h, cursor)) h.days[key(cursor.getFullYear(), cursor.getMonth(), cursor.getDate())] = true;
       cursor.setDate(cursor.getDate()+1);
     }
   }
@@ -1184,13 +1535,13 @@
       printBtn.style.display = "none";
       title.innerHTML = statsScope==="all"
         ? 'Statistik <span style="color:var(--muted);font-weight:600;font-size:15px">'+currentYear+'</span>'
-        : '<span class="dot" style="background:'+h.color+';width:16px;height:16px"></span>'+escapeHtml(h.name);
+        : habitTitleHtml(h, false);
       renderStats(content, h);
       return;
     }
 
     editBtn.style.display=""; printBtn.style.display="";
-    title.innerHTML = '<span class="dot" style="background:'+h.color+';width:16px;height:16px"></span>'+escapeHtml(h.name);
+    title.innerHTML = habitTitleHtml(h, true);
 
     const done = doneCount(h);
     const target = targetFor(h);
@@ -1198,11 +1549,14 @@
     const streak = currentStreak(h);
 
     let html = '<div class="goal-wrap" style="--glow:'+h.color+'">'+
-      '<div class="goal-head"><span class="big"><b id="statDone">'+done+'</b> von <b id="statTarget">'+target+'</b> Tagen erf\u00fcllt</span>'+
-      '<span class="streak-badge" id="streakBadge" style="display:'+(streak>0?'inline-flex':'none')+'">\ud83d\udd25 <b id="streakVal">'+streak+'</b> Tage in Folge</span>'+
-      '<span class="big" style="margin-left:auto">'+currentYear+'</span></div>'+
+      '<div class="goal-head">'+
+        '<span class="big"><b id="statDone">'+done+'</b>/<b id="statTarget">'+target+'</b>'+
+        ' \u00b7 <b id="goalPctText">'+pct+'%</b></span>'+
+        '<span class="streak-badge" id="streakBadge" style="display:'+(streak>0?'inline-flex':'none')+'">'+
+          '\ud83d\udd25 <b id="streakVal">'+streak+'</b></span>'+
+        '<span class="goal-rest" id="goalRest">noch '+Math.max(0,target-done)+' Tage</span>'+
+      '</div>'+
       '<div class="goal-bar"><span id="goalBarFill" style="width:'+pct+'%;'+gradientStyle(h.color)+'"></span></div>'+
-      '<div class="goal-pct" id="goalPctText">'+pct+'% geschafft \u00b7 noch '+Math.max(0,target-done)+' Tage bis zum Ziel</div>'+
       '</div>';
 
     // Die Welle spielt beim \u00d6ffnen einer Ansicht, aber nicht, wenn der Kalender
@@ -1221,14 +1575,16 @@
 
     html += (calMode==="year") ? buildYear(h) : (buildBand(h) + buildMonthPages(h, calMonth, wave));
 
-    html += '<div class="legend">'+
-        '<span class="k"><span class="sw" style="background:'+h.color+';border-color:transparent"></span> erf\u00fcllt</span>'+
-        '<span class="k"><span class="sw"></span> offen</span>'+
-        '<span class="k"><span class="sw" style="outline:2px solid var(--today);outline-offset:-2px"></span> heute</span>'+
+    // Legende entf\u00e4llt -- die Farben erkl\u00e4ren sich von selbst. Der Bedienhinweis
+    // erscheint nur, solange er nicht weggeklickt wurde.
+    if(!localStorage.getItem(TIP_KEY)){
+      html += '<div class="cal-tip" id="calTip"><span>'+
         (calMode==="year"
-          ? '<span class="k">Tipp: Monat antippen, um ihn zu \u00f6ffnen</span>'
-          : '<span class="k">Tipp: Tag antippen zum Umschalten \u00b7 Umschalt+Klick f\u00fcr einen ganzen Bereich \u00b7 im Band oben zu einem Monat springen</span>')+
-      '</div></div>';
+          ? 'Tipp: Monat antippen, um ihn zu \u00f6ffnen.'
+          : 'Tipp: Tag antippen zum Abhaken \u00b7 Umschalt+Klick f\u00fcr einen ganzen Bereich \u00b7 im Band oben zu einem Monat springen.')+
+        '</span><button id="tipClose" aria-label="Hinweis ausblenden">\u2715</button></div>';
+    }
+    html += '</div>';
 
     content.innerHTML = html;
     positionSegThumb(content.querySelector("#calModeSwitch"), true);
@@ -1262,6 +1618,12 @@
     if(!el) return;
     el.classList.toggle("done", done);
     el.style.cssText = done ? gradientStyle(color) : "";
+    // Puls auch im Band, damit der Zusammenhang zwischen beiden Darstellungen
+    // sichtbar wird. cssText l\u00f6scht die Eigenschaft, deshalb danach setzen.
+    el.style.setProperty("--pulse", color);
+    el.classList.remove("pulse-on","pulse-off");
+    void el.offsetWidth;
+    el.classList.add(done ? "pulse-on" : "pulse-off");
   }
   // Z\u00e4hlt f\u00fcr die Seite, auf der die angeklickte Zelle liegt -- nicht f\u00fcr den
   // gerade sichtbaren Monat, denn bei einem Bereich \u00fcber einen Monatswechsel
@@ -1278,6 +1640,15 @@
   }
 
   function wireCalendar(content, h, wave){
+    const tipClose = content.querySelector("#tipClose");
+    if(tipClose) tipClose.addEventListener("click", ()=>{
+      localStorage.setItem(TIP_KEY, "1");
+      const tip = content.querySelector("#calTip");
+      if(tip) tip.remove();
+    });
+
+    fitBand(content, true);
+
     const modeSw = content.querySelector("#calModeSwitch");
     modeSw.querySelectorAll("button").forEach(b=>b.addEventListener("click", ()=>{
       if(b.dataset.mode===calMode) return;
@@ -1368,7 +1739,7 @@
 
   // ---------- Kalender ----------
   const WD_SHORT = ["Mo","Di","Mi","Do","Fr","Sa","So"];
-  const BAND_WEEKS = 14; // ~3 Monate -- so viele Spalten passen auch auf ein iPhone
+  const BAND_VISIBLE = 18; // sichtbare Wochenspalten = rund vier Monate
 
   // Wochentag mit Montag = 0 (getDay() liefert Sonntag = 0, das passt nicht zur
   // hier \u00fcblichen Wochendarstellung).
@@ -1387,19 +1758,21 @@
 
   // Verlaufsband \u00fcber die letzten ~14 Wochen. Zeilen sind Wochentage, Spalten
   // Wochen -- dadurch bleibt es flach und braucht kein seitliches Scrollen.
+  // Verlaufsband \u00fcber das ganze Jahr. Sichtbar sind BAND_VISIBLE Wochenspalten
+  // (rund vier Monate), der Rest ist nach links wegbl\u00e4tterbar. Die Spaltenbreite
+  // wird nach dem Einf\u00fcgen aus der tats\u00e4chlichen Breite berechnet (siehe
+  // fitBand) -- so passen immer genau vier Monate ins Bild, unabh\u00e4ngig vom Ger\u00e4t.
   function buildBand(h){
     const y = h.year, t = heute(), days = h.days||{};
     let ende = (y === t.getFullYear()) ? new Date(t) : new Date(y,11,31);
-    // Bis zum Sonntag der laufenden Woche auff\u00fcllen, damit die letzte Spalte voll ist
-    ende.setDate(ende.getDate() + (6 - wdMon(ende)));
-    const start = new Date(ende);
-    start.setDate(start.getDate() - (BAND_WEEKS*7 - 1)); // liegt damit auf einem Montag
+    ende.setDate(ende.getDate() + (6 - wdMon(ende)));          // bis Sonntag auff\u00fcllen
+    const start = new Date(y,0,1);
+    start.setDate(start.getDate() - wdMon(start));              // zur\u00fcck auf Montag
+    const spalten = Math.round((ende - start) / (7*86400000)) + 1;
 
-    const spalten = "repeat("+BAND_WEEKS+",1fr)";
-    // Monatsbeschriftung immer dort, wo in einer Spalte ein neuer Monat beginnt
-    let kopf = '<div class="band-months" style="grid-template-columns:'+spalten+'">';
+    let kopf = '<div class="band-months">';
     let letzterMonat = -1;
-    for(let c=0;c<BAND_WEEKS;c++){
+    for(let c=0;c<spalten;c++){
       const montag = new Date(start); montag.setDate(montag.getDate()+c*7);
       const m = montag.getMonth();
       if(m!==letzterMonat && montag.getFullYear()===y){
@@ -1409,12 +1782,13 @@
     }
     kopf += '</div>';
 
-    let raster = '<div class="band-grid" style="grid-template-columns:'+spalten+'">';
+    let raster = '<div class="band-grid">';
     for(let r=0;r<7;r++){
-      for(let c=0;c<BAND_WEEKS;c++){
+      for(let c=0;c<spalten;c++){
         const d = new Date(start); d.setDate(d.getDate()+c*7+r);
         // Au\u00dferhalb des Habit-Jahres oder in der Zukunft: leeres Feld
         if(d.getFullYear()!==y || d>t){ raster += '<div class="bcell blank"></div>'; continue; }
+        if(!isPlanned(h, d)){ raster += '<div class="bcell rest"></div>'; continue; }
         const done = !!days[keyOf(d)];
         raster += '<button class="bcell'+(done?" done":"")+(sameDay(d,t)?" today":"")+'"'+
           (done ? ' style="'+gradientStyle(h.color)+'"' : '')+
@@ -1426,7 +1800,23 @@
 
     const wd = '<div class="band-wd">'+WD_SHORT.map((w,i)=>'<span>'+(i%2===0?w:"")+'</span>').join("")+'</div>';
     return '<div class="card-title" style="margin-bottom:10px">Verlauf</div>'+
-           '<div class="band-box">'+wd+'<div class="band-right">'+kopf+raster+'</div></div>';
+           '<div class="band-box">'+wd+
+             '<div class="band-scroll" id="bandScroll" style="--cols:'+spalten+'">'+kopf+raster+'</div>'+
+           '</div>';
+  }
+
+  // Rechnet die Kantenl\u00e4nge der Bandk\u00e4stchen so aus, dass genau BAND_VISIBLE
+  // Spalten in die sichtbare Breite passen, und stellt danach ans rechte Ende
+  // (= heute). Muss nach dem Einf\u00fcgen laufen, weil vorher keine Breite feststeht.
+  function fitBand(root, ansEnde){
+    const bs = (root || document).querySelector("#bandScroll");
+    if(!bs) return;
+    const breite = bs.clientWidth;
+    if(!breite) return;
+    const lueck = 3;
+    const zelle = Math.max(9, (breite - lueck*(BAND_VISIBLE-1)) / BAND_VISIBLE);
+    bs.style.setProperty("--bcw", zelle.toFixed(2)+"px");
+    if(ansEnde) bs.scrollLeft = bs.scrollWidth;
   }
 
   // Ein Monat als vertrautes Wochenraster. Tage aus Nachbarmonaten werden
@@ -1438,8 +1828,12 @@
     const lead = wdMon(new Date(y,m,1));
     const felder = Math.ceil((lead+dim)/7)*7;
 
-    let erfuellt = 0;
-    for(let d=1; d<=dim; d++) if(days[key(y,m,d)]) erfuellt++;
+    let erfuellt = 0, geplant = 0;
+    for(let d=1; d<=dim; d++){
+      if(!isPlannedYMD(h,y,m,d)) continue;
+      geplant++;
+      if(days[key(y,m,d)]) erfuellt++;
+    }
 
     let raster = '<div class="month-grid'+(withWave?" build":"")+'">';
     raster += WD_SHORT.map(w=>'<div class="wd">'+w+'</div>').join("");
@@ -1447,6 +1841,8 @@
       const d = new Date(y, m, 1-lead+i);
       const drin = (d.getMonth()===m && d.getFullYear()===y);
       if(!drin){ raster += '<div class="mcell out">'+d.getDate()+'</div>'; continue; }
+      // Tag steht laut Einstellung nicht an: sichtbar, aber nicht anklickbar
+      if(!isPlanned(h, d)){ raster += '<div class="mcell rest">'+d.getDate()+'</div>'; continue; }
       const k = keyOf(d);
       const done = !!days[k];
       let style = done ? gradientStyle(h.color) : "";
@@ -1455,7 +1851,7 @@
         (style?' style="'+style+'"':'')+' data-k="'+k+'">'+d.getDate()+'<span class="dt"></span></button>';
     }
     raster += '</div>';
-    return raster + '<div class="month-foot">'+erfuellt+' von '+dim+' Tagen erf\u00fcllt</div>';
+    return raster + '<div class="month-foot">'+erfuellt+' von '+geplant+' Tagen erf\u00fcllt</div>';
   }
 
   // Alle zw\u00f6lf Monate nebeneinander. Der sichtbare Ausschnitt wird \u00fcber die
@@ -1486,11 +1882,13 @@
       const dim = daysInMonth(y,m);
       const lead = wdMon(new Date(y,m,1));
       const felder = Math.ceil((lead+dim)/7)*7;
-      let erfuellt = 0;
+      let erfuellt = 0, geplant = 0;
       let zellen = "";
       for(let i=0;i<felder;i++){
         const d = new Date(y, m, 1-lead+i);
         if(d.getMonth()!==m || d.getFullYear()!==y){ zellen += '<div class="ycell"></div>'; continue; }
+        if(!isPlanned(h, d)){ zellen += '<div class="ycell day rest">'+d.getDate()+'</div>'; continue; }
+        geplant++;
         const done = !!days[keyOf(d)];
         if(done) erfuellt++;
         zellen += '<div class="ycell day'+(done?" done":"")+(sameDay(d,t)?" today":"")+'"'+
@@ -1499,7 +1897,7 @@
       const jetzt = (y===t.getFullYear() && m===t.getMonth());
       out += '<div class="ymonth'+(jetzt?" now":"")+'" data-month="'+m+'" title="'+MONTHS[m]+' \u00f6ffnen">'+
         '<h4>'+MONTHS[m]+'</h4><div class="ygrid">'+zellen+'</div>'+
-        '<div class="yfoot">'+erfuellt+' / '+dim+'</div></div>';
+        '<div class="yfoot">'+erfuellt+' / '+geplant+'</div></div>';
     }
     return out+'</div>';
   }
@@ -1512,6 +1910,7 @@
     for(let m=0;m<12;m++){
       const dim = daysInMonth(y,m);
       for(let d=1;d<=dim;d++){
+        if(!isPlannedYMD(h,y,m,d)) continue; // \u00fcberspringen, nicht unterbrechen
         if(days[key(y,m,d)]){ run++; if(run>best) best=run; }
         else run=0;
       }
@@ -1541,22 +1940,27 @@
   // h\u00e4tte der erste Punkt ein unvollst\u00e4ndiges Fenster und w\u00e4re k\u00fcnstlich niedrig.
   function rollingSeries(habits, from, to, win){
     const start = new Date(from); start.setDate(start.getDate()-(win-1));
-    const counts = [], dates = [];
+    const erledigt = [], geplant = [], dates = [];
     const cursor = new Date(start);
     while(cursor <= to){
       const k = key(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
-      let c = 0;
-      habits.forEach(h=>{ if(h.days && h.days[k]) c++; });
-      counts.push(c); dates.push(new Date(cursor));
+      let e = 0, g = 0;
+      habits.forEach(h=>{
+        // Nicht geplante Tage z\u00e4hlen weder oben noch unten mit -- sonst w\u00fcrde
+        // ein Habit, der nur Mo-Fr l\u00e4uft, jedes Wochenende die Quote dr\u00fccken.
+        if(!isPlanned(h, cursor)) return;
+        g++;
+        if(h.days && h.days[k]) e++;
+      });
+      erledigt.push(e); geplant.push(g); dates.push(new Date(cursor));
       cursor.setDate(cursor.getDate()+1);
     }
     const out = [];
-    const denom = win * (habits.length||1);
-    let sum = 0;
-    for(let i=0;i<counts.length;i++){
-      sum += counts[i];
-      if(i >= win) sum -= counts[i-win];
-      if(i >= win-1) out.push({ date: dates[i], pct: habits.length ? (sum/denom)*100 : 0 });
+    let se = 0, sg = 0;
+    for(let i=0;i<erledigt.length;i++){
+      se += erledigt[i]; sg += geplant[i];
+      if(i >= win){ se -= erledigt[i-win]; sg -= geplant[i-win]; }
+      if(i >= win-1) out.push({ date: dates[i], pct: sg ? (se/sg)*100 : 0 });
     }
     return out;
   }
@@ -1566,20 +1970,78 @@
     const out = [];
     for(let m=0;m<12;m++){
       const dim = daysInMonth(year,m);
-      let c = 0;
+      let e = 0, g = 0;
       habits.forEach(h=>{
         const days = h.days||{};
-        for(let d=1;d<=dim;d++) if(days[key(year,m,d)]) c++;
+        for(let d=1;d<=dim;d++){
+          if(!isPlannedYMD(h, year, m, d)) continue;
+          g++;
+          if(days[key(year,m,d)]) e++;
+        }
       });
-      const max = dim * habits.length;
-      out.push(max ? c/max*100 : 0);
+      out.push(g ? e/g*100 : 0);
     }
     return out;
   }
 
   function fmtD(d){ return String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0")+"."; }
 
+  // Serien-Auswertung: durchschnittliche L\u00e4nge einer Serie, l\u00e4ngste Pause und
+  // wie oft nach einem Abbruch wieder angefangen wurde. Zuk\u00fcnftige Tage bleiben
+  // au\u00dfen vor -- sonst z\u00e4hlte der Rest des Jahres als eine riesige Pause.
+  function streakStats(h){
+    const days = h.days||{}, y = h.year, t = heute();
+    const laeufe = [];
+    let run=0, pause=0, maxPause=0, neustarts=0, schonMal=false, fertig=false;
+    for(let m=0;m<12 && !fertig;m++){
+      const dim = daysInMonth(y,m);
+      for(let d=1; d<=dim; d++){
+        if(new Date(y,m,d) > t){ fertig = true; break; }
+        if(!isPlannedYMD(h,y,m,d)) continue;
+        if(days[key(y,m,d)]){
+          if(run===0 && schonMal) neustarts++;
+          if(pause>maxPause) maxPause = pause;
+          pause = 0; run++; schonMal = true;
+        }else{
+          if(run>0) laeufe.push(run);
+          run = 0; pause++;
+        }
+      }
+    }
+    if(run>0) laeufe.push(run);
+    if(pause>maxPause) maxPause = pause;
+    return {
+      schnitt: laeufe.length ? laeufe.reduce((a,b)=>a+b,0)/laeufe.length : 0,
+      maxPause: maxPause, neustarts: neustarts, anzahl: laeufe.length
+    };
+  }
+
+  // Hochrechnung: die Quote der letzten 30 Tage auf die verbleibenden geplanten
+  // Tage angewendet. Bewusst nur die letzten 30 Tage -- ein Jahresschnitt w\u00fcrde
+  // eine frische Verbesserung oder einen Durchh\u00e4nger verwischen.
+  function forecast(scope){
+    const t = heute(), jahr = scope[0].year;
+    const yEnd = new Date(jahr,11,31);
+    if(t > yEnd || t < new Date(jahr,0,1)) return null;
+    const von = new Date(t); von.setDate(von.getDate()-29);
+    let e=0, g=0, rest=0;
+    scope.forEach(h=>{
+      let c = new Date(von);
+      while(c <= t){ if(isPlanned(h,c)){ g++; if((h.days||{})[keyOf(c)]) e++; } c.setDate(c.getDate()+1); }
+      c = new Date(t); c.setDate(c.getDate()+1);
+      while(c <= yEnd){ if(isPlanned(h,c)) rest++; c.setDate(c.getDate()+1); }
+    });
+    const quote = g ? e/g : 0;
+    const bisher = scope.reduce((a,x)=>a+doneCount(x), 0);
+    const ziel = scope.reduce((a,x)=>a+targetFor(x), 0);
+    return { quote:quote, prognose: Math.round(bisher + quote*rest), ziel:ziel, rest:rest, bisher:bisher };
+  }
+
   // ---------- Statistik: Darstellung ----------
+  function miniStat(wert, label){
+    return '<div class="mini-stat"><div class="ms-val">'+wert+'</div><div class="ms-lbl">'+label+'</div></div>';
+  }
+
   function statTile(icon, val, label, color, i){
     return '<div class="tile anim-up" style="--tint:'+color+';animation-delay:'+(i*70)+'ms">'+
       '<div class="ic">'+icon+'</div>'+
@@ -1665,7 +2127,7 @@
     line.style.strokeDasharray = len;
     line.style.strokeDashoffset = len;
     reveal.setAttribute("width", 0);
-    const dur = 900, t0 = performance.now();
+    const dur = 1350, t0 = performance.now();
     function step(now){
       const p = Math.min(1, (now-t0)/dur);
       const e = 1 - Math.pow(1-p, 3);
@@ -1741,6 +2203,69 @@
         '</div>').join("")+
       '</div></div>';
 
+    // ---- Hochrechnung aufs Jahresende ----
+    const fc = forecast(scope);
+    if(fc && fc.rest > 0){
+      const schafft = fc.prognose >= fc.ziel;
+      const pctQ = Math.round(fc.quote*100);
+      html += '<div class="card anim-up" style="animation-delay:330ms">'+
+        '<div class="card-head"><div>'+
+          '<div class="card-title">Hochrechnung</div>'+
+          '<div class="card-sub">Aus deiner Quote der letzten 30 Tage ('+pctQ+'%)</div>'+
+        '</div></div>'+
+        '<div class="fc-row">'+
+          '<div class="fc-big" style="color:'+(schafft?"var(--good)":color)+'">'+fc.prognose+'</div>'+
+          '<div class="fc-txt">von '+fc.ziel+' zum Jahresende<br>'+
+            '<span style="color:'+(schafft?"var(--good)":"var(--muted)")+'">'+
+            (schafft ? "Damit erreichst du dein Ziel." :
+              "Dir fehlen "+(fc.ziel-fc.prognose)+" \u2013 daf\u00fcr br\u00e4uchtest du "+
+              Math.min(100, Math.round((fc.ziel-fc.bisher)/fc.rest*100))+"% statt "+pctQ+"%.")+
+            '</span></div>'+
+        '</div>'+
+        '<div class="fc-bar"><span style="width:'+Math.min(100,Math.round(fc.prognose/fc.ziel*100))+'%;'+gradientStyle(schafft?"#3ecf8e":color)+'"></span></div>'+
+        '</div>';
+    }
+
+    // ---- Serien-Auswertung ----
+    const ss = scope.map(streakStats);
+    const schnitt = ss.length ? ss.reduce((a,x)=>a+x.schnitt,0)/ss.length : 0;
+    const maxPause = ss.reduce((a,x)=>Math.max(a,x.maxPause), 0);
+    const neustarts = ss.reduce((a,x)=>a+x.neustarts, 0);
+    html += '<div class="card anim-up" style="animation-delay:390ms">'+
+      '<div class="card-head"><div>'+
+        '<div class="card-title">Durchhalteverm\u00f6gen</div>'+
+        '<div class="card-sub">Wie stabil du dranbleibst, nicht nur wie viel</div>'+
+      '</div></div>'+
+      '<div class="mini-stats">'+
+        miniStat(schnitt.toFixed(1).replace(".",","), "Tage je Serie im Schnitt")+
+        miniStat(maxPause, maxPause===1 ? "Tag l\u00e4ngste Pause" : "Tage l\u00e4ngste Pause")+
+        miniStat(neustarts, neustarts===1 ? "Mal neu angefangen" : "Mal neu angefangen")+
+      '</div></div>';
+
+    // ---- Vergleich aller Habits (nur in der Gesamt\u00fcbersicht sinnvoll) ----
+    if(all && habits.length > 1){
+      const rang = habits.map(x=>{
+        const d = doneCount(x), z = targetFor(x);
+        return { x:x, d:d, z:z, pct: z ? Math.round(d/z*100) : 0 };
+      }).sort((a,b)=>b.pct-a.pct);
+      html += '<div class="card anim-up" style="animation-delay:450ms">'+
+        '<div class="card-head"><div>'+
+          '<div class="card-title">Vergleich</div>'+
+          '<div class="card-sub">Welcher Habit l\u00e4uft am besten</div>'+
+        '</div></div><div class="rank">'+
+        rang.map((r,i)=>
+          '<div class="rank-row">'+
+            '<span class="rank-no">'+(i+1)+'</span>'+
+            (r.x.icon
+              ? '<span class="habit-icon" style="color:'+r.x.color+';width:22px;height:22px;border-radius:7px">'+iconSvg(r.x.icon,13)+'</span>'
+              : '<span class="dot" style="background:'+r.x.color+'"></span>')+
+            '<span class="rank-name">'+escapeHtml(r.x.name)+'</span>'+
+            '<span class="rank-bar"><span style="width:'+r.pct+'%;'+gradientStyle(r.x.color)+'"></span></span>'+
+            '<span class="rank-pct">'+r.pct+'%</span>'+
+          '</div>').join("")+
+        '</div></div>';
+    }
+
     html += '</div>';
     content.innerHTML = html;
 
@@ -1755,7 +2280,9 @@
     // 0-Zustand als Ausgangswert des \u00dcbergangs z\u00e4hlt)
     void content.offsetWidth;
     content.querySelectorAll(".mbar .fill").forEach((el,i)=>{
-      if(animOn) el.style.transitionDelay = (330 + i*45)+"ms";
+      // Versatz mitgezogen: bei langsamer wachsenden Balken muss auch der
+      // Abstand zwischen ihnen gr\u00f6\u00dfer werden, sonst verschmilzt die Staffelung.
+      if(animOn) el.style.transitionDelay = (380 + i*55)+"ms";
       el.style.height = el.getAttribute("data-h")+"%";
     });
     animateChart(content);
@@ -1802,6 +2329,52 @@
     el.addEventListener("animationend", ()=>el.classList.remove(p.cls), { once:true });
   }
 
+  // ---------- Schnellmodus ----------
+  // Beim Einschalten sind die heute bereits erledigten Habits vorausgew\u00e4hlt.
+  // \u00dcbernehmen schreibt genau die Differenz -- dadurch kann man mit demselben
+  // Weg auch etwas versehentlich Abgehaktes wieder entfernen.
+  function startQuick(){
+    const t = heute();
+    quickPicked = new Set();
+    habitsOfYear(currentYear).forEach(h=>{
+      if(isPlanned(h,t) && (h.days||{})[keyOf(t)]) quickPicked.add(h.id);
+    });
+    quickMode = true;
+    document.body.classList.add("quick");
+    renderSidebar();
+    updateQuickBar();
+  }
+  function endQuick(){
+    quickMode = false;
+    quickPicked = null;
+    document.body.classList.remove("quick");
+    renderSidebar();
+  }
+  function updateQuickBar(){
+    const n = quickPicked ? quickPicked.size : 0;
+    document.getElementById("quickCount").textContent =
+      n===0 ? "nichts ausgew\u00e4hlt" : (n===1 ? "1 ausgew\u00e4hlt" : n+" ausgew\u00e4hlt");
+  }
+  function applyQuick(){
+    const t = heute(), k = keyOf(t);
+    let dazu = 0, weg = 0;
+    habitsOfYear(currentYear).forEach(h=>{
+      if(!isPlanned(h,t)) return;
+      h.days = h.days || {};
+      const soll = quickPicked.has(h.id);
+      const ist = !!h.days[k];
+      if(soll && !ist){ h.days[k] = true; dazu++; }
+      else if(!soll && ist){ delete h.days[k]; weg++; }
+    });
+    save();
+    endQuick();
+    renderMain();
+    const teile = [];
+    if(dazu) teile.push(dazu+(dazu===1?" Habit abgehakt":" Habits abgehakt"));
+    if(weg) teile.push(weg+(weg===1?" Haken entfernt":" Haken entfernt"));
+    toast(teile.length ? teile.join(" \u00b7 ")+" f\u00fcr heute." : "Nichts ge\u00e4ndert.");
+  }
+
   function updateTabbar(){
     const active = !mobileDetail ? "habits" : (view==="stats" ? "stats" : "cal");
     document.querySelectorAll('#tabbar button[data-tab]').forEach(b=>{
@@ -1838,9 +2411,33 @@
     }
   }
 
+  // Misst die Kopfzeile, damit der Fortschrittsblock exakt darunter kleben
+  // bleibt. N\u00f6tig, weil die Kopfzeile je nach Breite und Habit-Namen ein- oder
+  // zweizeilig ausf\u00e4llt -- ein fester Wert l\u00e4ge zwangsl\u00e4ufig daneben.
+  function measureTopbar(){
+    const tb = document.querySelector(".topbar");
+    if(!tb) return;
+    const h = tb.offsetHeight;
+    // Eine Messung von 0 hei\u00dft: die Seite ist gerade gar nicht dargestellt
+    // (etwa in einem Hintergrund-Tab). Dann lieber den bisherigen Wert
+    // behalten, als den Block auf 0 zu setzen.
+    if(h > 0) document.documentElement.style.setProperty("--topbar-h", h+"px");
+  }
+
   function renderAll(){
     ensureSelection(); applyMobileDetailClass();
-    renderSidebar(); renderMain(); updateTabbar(); consumeAnim();
+    renderSidebar(); renderMain(); updateTabbar(); measureTopbar(); consumeAnim();
+  }
+
+  // Kopfzeile eines Habits: Symbol (oder Punkt), Name und darunter die
+  // Beschreibung. Ohne Beschreibung wird das Element gar nicht erzeugt --
+  // so kostet ein Habit ohne Text keinen zus\u00e4tzlichen Platz.
+  function habitTitleHtml(h, mitNotiz){
+    const marke = h.icon
+      ? '<span class="habit-icon" style="color:'+h.color+';width:30px;height:30px;border-radius:10px">'+iconSvg(h.icon,18)+'</span>'
+      : '<span class="dot" style="background:'+h.color+';width:16px;height:16px"></span>';
+    const notiz = (mitNotiz && h.note) ? '<span class="habit-note">'+escapeHtml(h.note)+'</span>' : '';
+    return marke + '<span class="title-text"><span>'+escapeHtml(h.name)+'</span>'+notiz+'</span>';
   }
 
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -1895,17 +2492,25 @@
     const prev = habitsOfYear(currentYear-1);
     if(!prev.length) return;
     prev.forEach((p, idx)=>{
-      state.habits.push({
+      const nh = {
         id: uid(),
         year: currentYear,
         name: p.name,
         color: p.color,
+        icon: p.icon || null,
+        note: p.note || "",
         goalMode: p.goalMode,
-        target: p.goalMode==="custom" ? p.target : daysInYear(currentYear),
+        weekdays: p.weekdays ? p.weekdays.slice() : null,
+        months: p.months ? p.months.slice() : null,
+        target: 0,
         order: idx,
         days: {},
         created: Date.now()
-      });
+      };
+      // Ziel neu berechnen: das neue Jahr hat andere Wochentage und
+      // m\u00f6glicherweise einen 29. Februar.
+      nh.target = p.goalMode==="custom" ? p.target : plannedDaysInYear(nh);
+      state.habits.push(nh);
     });
     save();
     selectedId = null;
@@ -1918,16 +2523,82 @@
     const h = id ? getHabit(id) : null;
     document.getElementById("modalTitle").textContent = h ? "Habit bearbeiten ("+h.year+")" : "Neuer Habit f\u00fcr "+currentYear;
     document.getElementById("mName").value = h ? h.name : "";
+    document.getElementById("mNote").value = (h && h.note) ? h.note : "";
+    modalIcon = (h && h.icon) ? h.icon : null;
     modalColor = h ? h.color : COLORS[habitsOfYear(currentYear).length % COLORS.length];
     modalGoalMode = h ? h.goalMode : "year";
+    modalWeekdays = (h && h.weekdays && h.weekdays.length) ? h.weekdays.slice() : [0,1,2,3,4,5,6];
+    modalMonths   = (h && h.months   && h.months.length)   ? h.months.slice()   : [0,1,2,3,4,5,6,7,8,9,10,11];
     document.getElementById("mTarget").value = (h && h.goalMode==="custom") ? h.target : 100;
     document.getElementById("deleteBtn").style.display = h ? "" : "none";
     renderSwatches();
+    renderIconPicker();
     setGoalMode(modalGoalMode);
+    renderPlanChips();
     document.getElementById("overlay").classList.add("show");
     setTimeout(()=>document.getElementById("mName").focus(),50);
   }
   function closeModal(){ document.getElementById("overlay").classList.remove("show"); editingId=null; }
+
+  // Zeichnet die Wochentags- und Monatsauswahl und schreibt darunter, wie viele
+  // Tage im Jahr dabei herauskommen -- sonst w\u00e4hlt man blind.
+  function renderPlanChips(){
+    const wd = document.getElementById("mWeekdays");
+    const mo = document.getElementById("mMonths");
+    wd.innerHTML = ""; mo.innerHTML = "";
+    WD_SHORT.forEach((name, i)=>{
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = name;
+      b.className = modalWeekdays.indexOf(i)>=0 ? "on" : "";
+      b.addEventListener("click", ()=>{ toggleIn(modalWeekdays, i); renderPlanChips(); });
+      wd.appendChild(b);
+    });
+    MONTHS_SHORT.forEach((name, i)=>{
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = name;
+      b.className = modalMonths.indexOf(i)>=0 ? "on" : "";
+      b.addEventListener("click", ()=>{ toggleIn(modalMonths, i); renderPlanChips(); });
+      mo.appendChild(b);
+    });
+    document.getElementById("mWdAll").textContent = modalWeekdays.length===7 ? "keine" : "alle";
+    document.getElementById("mMoAll").textContent = modalMonths.length===12 ? "keine" : "alle";
+
+    const jahr = editingId ? (getHabit(editingId)||{}).year || currentYear : currentYear;
+    const probe = { year: jahr, weekdays: modalWeekdays, months: modalMonths };
+    const tage = plannedDaysInYear(probe);
+    const sum = document.getElementById("planSum");
+    if(!modalWeekdays.length || !modalMonths.length){
+      sum.textContent = "Achtung: So ist kein einziger Tag vorgesehen.";
+    }else{
+      sum.textContent = "Ergibt "+tage+" geplante Tage in "+jahr+".";
+    }
+    if(modalGoalMode==="year"){
+      document.getElementById("goalHint").textContent =
+        "Ziel = alle geplanten Tage ("+tage+" in "+jahr+").";
+    }
+  }
+  function toggleIn(arr, wert){
+    const i = arr.indexOf(wert);
+    if(i>=0) arr.splice(i,1); else { arr.push(wert); arr.sort((a,b)=>a-b); }
+  }
+
+  function renderIconPicker(){
+    const wrap = document.getElementById("mIcons");
+    wrap.innerHTML = "";
+    wrap.style.color = modalColor; // Grundlage f\u00fcr die farbige Auswahl
+    ICON_KEYS.forEach(name=>{
+      const b = document.createElement("button");
+      b.type = "button";
+      b.title = name;
+      b.innerHTML = iconSvg(name, 19);
+      if(name===modalIcon) b.classList.add("sel");
+      b.addEventListener("click", ()=>{
+        modalIcon = (modalIcon===name) ? null : name; // nochmal tippen = abw\u00e4hlen
+        renderIconPicker();
+      });
+      wrap.appendChild(b);
+    });
+  }
 
   function renderSwatches(){
     const wrap = document.getElementById("swatches");
@@ -1936,7 +2607,7 @@
       const b=document.createElement("button");
       b.style.background=c;
       if(c===modalColor) b.classList.add("sel");
-      b.addEventListener("click",()=>{ modalColor=c; renderSwatches(); });
+      b.addEventListener("click",()=>{ modalColor=c; renderSwatches(); renderIconPicker(); });
       wrap.appendChild(b);
     });
     document.getElementById("mColorPicker").value = modalColor;
@@ -1948,6 +2619,9 @@
     });
     document.getElementById("mTarget").style.display = mode==="custom" ? "" : "none";
     document.getElementById("goalHint").style.display = mode==="custom" ? "none" : "";
+    // Der Hinweistext nennt die Zahl der geplanten Tage -- die h\u00e4ngt an der
+    // Wochentags- und Monatsauswahl und muss beim Moduswechsel mitziehen.
+    if(mode==="year" && document.getElementById("mWeekdays").children.length) renderPlanChips();
   }
 
   function saveModal(){
@@ -1957,19 +2631,34 @@
     if(modalGoalMode==="custom"){
       if(!target || target<1){ toast("Bitte gib ein g\u00fcltiges Ziel (mindestens 1) ein."); return; }
     }
+    if(!modalWeekdays.length || !modalMonths.length){
+      toast("W\u00e4hle mindestens einen Wochentag und einen Monat aus."); return;
+    }
+    // Nur speichern, wenn wirklich eingeschr\u00e4nkt -- eine leere Angabe bedeutet
+    // "keine Einschr\u00e4nkung" und h\u00e4lt die Sicherungsdatei schlank.
+    const wdSet = modalWeekdays.length===7  ? null : modalWeekdays.slice();
+    const moSet = modalMonths.length===12   ? null : modalMonths.slice();
+
+    const note = document.getElementById("mNote").value.trim();
+
     if(editingId){
       const h=getHabit(editingId);
       h.name=name; h.color=modalColor; h.goalMode=modalGoalMode;
-      h.target = modalGoalMode==="custom" ? target : daysInYear(h.year);
+      h.icon = modalIcon; h.note = note;
+      h.weekdays = wdSet; h.months = moSet;
+      h.target = modalGoalMode==="custom" ? target : plannedDaysInYear(h);
       selectedId = editingId;
     }else{
       const h={
         id:uid(), year:currentYear, name, color:modalColor,
+        icon: modalIcon, note: note,
         goalMode:modalGoalMode,
-        target: modalGoalMode==="custom" ? target : daysInYear(currentYear),
+        weekdays: wdSet, months: moSet,
+        target: 0,
         order: habitsOfYear(currentYear).length,
         days:{}, created:Date.now()
       };
+      h.target = modalGoalMode==="custom" ? target : plannedDaysInYear(h);
       state.habits.push(h);
       selectedId=h.id;
       mobileDetail=true;
@@ -2035,7 +2724,17 @@
   document.getElementById("deleteBtn").addEventListener("click",deleteHabit);
   document.getElementById("overlay").addEventListener("click",(e)=>{ if(e.target.id==="overlay") closeModal(); });
   document.querySelectorAll("#goalMode button").forEach(b=>b.addEventListener("click",()=>setGoalMode(b.getAttribute("data-mode"))));
+  document.getElementById("mWdAll").addEventListener("click",()=>{
+    modalWeekdays = modalWeekdays.length===7 ? [] : [0,1,2,3,4,5,6];
+    renderPlanChips();
+  });
+  document.getElementById("mMoAll").addEventListener("click",()=>{
+    modalMonths = modalMonths.length===12 ? [] : [0,1,2,3,4,5,6,7,8,9,10,11];
+    renderPlanChips();
+  });
   document.getElementById("mName").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveModal(); });
+  document.getElementById("mNote").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveModal(); });
+  document.getElementById("mIconNone").addEventListener("click",()=>{ modalIcon = null; renderIconPicker(); });
 
   function changeYear(delta){
     currentYear+=delta; selectedId=null;
@@ -2146,8 +2845,14 @@
       // der Kalender nach einer Gr\u00f6\u00dfen\u00e4nderung zwischen zwei Monaten.
       const sc = document.getElementById("monthScroller");
       if(sc && sc.clientWidth) sc.scrollLeft = calMonth * sc.clientWidth;
+      fitBand(document, false);
+      measureTopbar();
     }, 120);
   });
+
+  document.getElementById("quickBtn").addEventListener("click",()=>{ quickMode ? endQuick() : startQuick(); });
+  document.getElementById("quickCancel").addEventListener("click",endQuick);
+  document.getElementById("quickApply").addEventListener("click",applyQuick);
 
   document.getElementById("exportBtn").addEventListener("click",exportData);
   document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("importFile").click());
