@@ -42,7 +42,10 @@
       radial-gradient(ellipse 1200px 800px at 15% -10%, rgba(79,140,255,.07), transparent 60%),
       radial-gradient(ellipse 1000px 800px at 100% 110%, rgba(62,207,142,.05), transparent 60%),
       var(--bg);
-    background-attachment:fixed;
+    /* Bewusst NICHT "fixed": ein festgepinnter Hintergrund zwingt den Browser,
+       ihn bei jedem Scrollbild neu zu zeichnen -- die haeufigste Ursache fuer
+       ruckelndes Scrollen auf dem Handy. */
+    background-attachment:scroll;
   }
   button{font-family:inherit;cursor:pointer}
   input,select{font-family:inherit}
@@ -145,7 +148,11 @@
   .habit-name{font-weight:600;font-size:14.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .habit-count{color:var(--muted);font-size:12px;margin-top:8px;font-variant-numeric:tabular-nums}
   .bar{height:7px;border-radius:5px;background:#0c0e12;margin-top:6px;overflow:hidden}
-  .bar > span{display:block;height:100%;border-radius:5px;transition:width var(--dur-slow) var(--ease)}
+  /* Fortschrittsbalken wachsen ueber transform statt ueber width. Eine Breiten-
+     aenderung zwingt den Browser in jedem Bild zu einer neuen Layout-Berechnung;
+     eine Skalierung uebernimmt die Grafikkarte. Die Rundung kommt vom Rahmen
+     (.bar hat overflow:hidden), deshalb braucht der Balken selbst keine. */
+  .bar > span{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);transition:transform var(--dur-slow) var(--ease)}
 
   .sidebar-foot{padding:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
   .btn{
@@ -205,7 +212,7 @@
     font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;
   }
   .goal-bar{height:8px;border-radius:5px;background:var(--panel-2);margin-top:9px;overflow:hidden;border:1px solid var(--line)}
-  .goal-bar > span{display:block;height:100%;transition:width var(--dur-slow) var(--ease)}
+  .goal-bar > span{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);transition:transform var(--dur-slow) var(--ease)}
   .streak-badge{
     display:inline-flex;align-items:center;gap:4px;background:var(--panel-2);
     border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:700;
@@ -225,25 +232,25 @@
 
   /* Abhaken: kurzer heller Puls in der Habit-Farbe, danach laeuft ein
      Leuchtrand nach aussen und blendet dabei aus. --pulse wird beim Klick
-     auf die Farbe des jeweiligen Habits gesetzt. */
+     auf die Farbe des jeweiligen Habits gesetzt.
+     Der Leuchtrand ist ein eigenes Element, das nur skaliert und ausblendet.
+     Beides kann die Grafikkarte uebernehmen -- eine Animation von box-shadow
+     muesste dagegen in jedem Bild neu weichgezeichnet werden und ruckelt. */
   @keyframes checkPulse{
-    0%{
-      transform:scale(1); filter:brightness(1);
-      box-shadow:0 0 0 0 color-mix(in srgb, var(--pulse) 65%, transparent),
-                 0 0 0 0 color-mix(in srgb, var(--pulse) 60%, transparent);
-    }
-    32%{
-      transform:scale(1.17); filter:brightness(1.4);
-      box-shadow:0 0 0 5px color-mix(in srgb, var(--pulse) 38%, transparent),
-                 0 0 18px 3px color-mix(in srgb, var(--pulse) 55%, transparent);
-    }
-    100%{
-      transform:scale(1); filter:brightness(1);
-      box-shadow:0 0 0 15px color-mix(in srgb, var(--pulse) 0%, transparent),
-                 0 0 22px 6px color-mix(in srgb, var(--pulse) 0%, transparent);
-    }
+    0%{transform:scale(1);filter:brightness(1)}
+    32%{transform:scale(1.16);filter:brightness(1.35)}
+    100%{transform:scale(1);filter:brightness(1)}
   }
-  .pulse-on{animation:checkPulse 620ms var(--ease); z-index:3; position:relative}
+  @keyframes ringOut{
+    0%{transform:scale(1);opacity:.9}
+    100%{transform:scale(2.4);opacity:0}
+  }
+  .pulse-on{animation:checkPulse 560ms var(--ease); z-index:3; position:relative}
+  .pulse-on::after{
+    content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
+    border:2px solid var(--pulse);
+    animation:ringOut 620ms var(--ease) both;
+  }
   /* Abwaehlen bleibt bewusst leiser -- ein Widerruf soll nicht gefeiert werden */
   @keyframes checkUndo{ 0%{transform:scale(1)} 40%{transform:scale(.9)} 100%{transform:scale(1)} }
   .pulse-off{animation:checkUndo var(--dur-fast) var(--ease)}
@@ -263,8 +270,15 @@
     color:var(--muted);font-size:9.5px;font-weight:700;min-width:18px;
   }
   .band-wd span{display:flex;align-items:center}
+  /* Das Innenfutter oben und unten ist kein Zierrat: der Bereich schneidet
+     senkrecht ab (overflow-y muss hidden bleiben, sonst erzwingt die
+     waagerechte Achse eine senkrechte Bildlaufleiste). Ohne diesen Rand
+     wuerde der Leuchtrand beim Abhaken in der obersten und untersten Zeile
+     -- also montags und sonntags -- abgeschnitten. Der negative Aussenrand
+     gleicht die zusaetzliche Hoehe wieder aus. */
   .band-scroll{
     flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;
+    padding:14px 0;margin:-14px 0;
     overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;
   }
   .band-scroll::-webkit-scrollbar{display:none}
@@ -297,6 +311,9 @@
      am Rand stattdessen die Zurueck-Geste des Browsers ausloest. */
   .month-scroller{
     display:flex;overflow-x:auto;overflow-y:hidden;
+    /* Gleiche Begruendung wie beim Verlaufsband: Platz fuer den Leuchtrand
+       der obersten und untersten Kalenderzeile. */
+    padding:16px 0;margin:-16px 0;
     scroll-snap-type:x mandatory;overscroll-behavior-x:contain;
     -webkit-overflow-scrolling:touch;scrollbar-width:none;
   }
@@ -574,7 +591,7 @@
   .mbars{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;align-items:end;height:158px}
   .mbar{display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:7px;min-width:0}
   .mbar .track{flex:1;display:flex;align-items:flex-end;border-radius:7px;background:#0c0e12;box-shadow:inset 0 1px 3px rgba(0,0,0,.4);overflow:hidden}
-  .mbar .fill{width:100%;height:0;border-radius:7px;transition:height var(--dur-stat) var(--ease)}
+  .mbar .fill{width:100%;height:100%;transform-origin:bottom;transform:scaleY(0);transition:transform var(--dur-stat) var(--ease)}
   .mbar .cap{text-align:center;color:var(--muted);font-size:10.5px;font-weight:600}
   .mbar .pctv{text-align:center;color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums;opacity:0;transition:opacity .3s}
   .mbar:hover .pctv{opacity:1}
@@ -736,8 +753,11 @@
       display:flex;align-items:flex-end;justify-content:space-around;gap:2px;
       position:fixed;left:0;right:0;bottom:0;z-index:45;
       padding:7px 4px calc(7px + env(safe-area-inset-bottom));
-      background:rgba(23,26,33,.86);border-top:1px solid var(--line);
-      backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);
+      background:rgba(23,26,33,.94);border-top:1px solid var(--line);
+      /* Weichzeichner bewusst niedrig und Untergrund dafuer deckender: der
+         Browser muss den Bereich hinter der Leiste bei jedem Scrollbild neu
+         weichzeichnen -- je groesser der Radius, desto teurer. */
+      backdrop-filter:blur(10px) saturate(130%);-webkit-backdrop-filter:blur(10px) saturate(130%);
     }
     /* Platz schaffen, damit die Leiste nichts ueberdeckt */
     .sidebar,.main{padding-bottom:96px}
@@ -1309,7 +1329,7 @@
         '<span class="habit-name">'+escapeHtml(h.name)+'</span></div>'+
         '<div class="habit-count">'+done+' von '+target+' erf\u00fcllt \u00b7 '+pct+'%'+
         (streak>0 ? '<span class="streak-mini">\ud83d\udd25 '+streak+'</span>' : '')+'</div>'+
-        '<div class="bar"><span data-pct="'+pct+'" style="width:'+(intro?0:pct)+'%;'+gradientStyle(h.color)+'"></span></div>'+
+        '<div class="bar"><span data-pct="'+pct+'" style="transform:scaleX('+(intro?0:pct/100)+');'+gradientStyle(h.color)+'"></span></div>'+
         '<span class="habit-pick">'+ICONS.check+'</span>';
       // Im Schnellmodus: heute nicht eingeplante Habits sind nicht ausw\u00e4hlbar
       if(quickMode){
@@ -1355,7 +1375,7 @@
       void list.offsetWidth;
       list.querySelectorAll(".habit-card .bar > span").forEach((fill,idx)=>{
         fill.style.transitionDelay = (idx*55 + 120)+"ms";
-        fill.style.width = fill.dataset.pct+"%";
+        setBar(fill, parseFloat(fill.dataset.pct));
       });
     }
 
@@ -1463,7 +1483,7 @@
     const pct = target>0 ? Math.min(100, Math.round(done/target*100)) : 0;
     const streak = currentStreak(h);
     animateNumber(statDone, done);
-    document.getElementById("goalBarFill").style.width = pct+"%";
+    setBar(document.getElementById("goalBarFill"), pct);
     document.getElementById("goalPctText").textContent = pct+"%";
     document.getElementById("goalRest").textContent = "noch "+Math.max(0,target-done)+" Tage";
     const badge = document.getElementById("streakBadge");
@@ -1479,7 +1499,7 @@
     const streak = currentStreak(h);
     card.querySelector(".habit-count").innerHTML =
       done+" von "+target+" erf\u00fcllt \u00b7 "+pct+"%"+(streak>0 ? '<span class="streak-mini">\ud83d\udd25 '+streak+'</span>' : "");
-    card.querySelector(".bar > span").style.width = pct+"%";
+    setBar(card.querySelector(".bar > span"), pct);
   }
   // Markiert alle Tage zwischen zwei Kalender-Keys (inklusive, unabh\u00e4ngig von der
   // Klickreihenfolge) als erledigt -- f\u00fcr Umschalt+Klick "ganzen Bereich abhaken".
@@ -1556,7 +1576,7 @@
           '\ud83d\udd25 <b id="streakVal">'+streak+'</b></span>'+
         '<span class="goal-rest" id="goalRest">noch '+Math.max(0,target-done)+' Tage</span>'+
       '</div>'+
-      '<div class="goal-bar"><span id="goalBarFill" style="width:'+pct+'%;'+gradientStyle(h.color)+'"></span></div>'+
+      '<div class="goal-bar"><span id="goalBarFill" style="transform:scaleX('+(pct/100)+');'+gradientStyle(h.color)+'"></span></div>'+
       '</div>';
 
     // Die Welle spielt beim \u00d6ffnen einer Ansicht, aber nicht, wenn der Kalender
@@ -2124,9 +2144,21 @@
     }
 
     const len = line.getTotalLength();
+
+    // Die Punkte der Linie EINMAL vorab abtasten. Vorher lief
+    // getPointAtLength in jedem Bild -- eine teure Geometrie-Abfrage, die
+    // 60-mal pro Sekunde sp\u00fcrbar ins Ruckeln geht.
+    const PROBEN = 90;
+    const punkte = [];
+    for(let i=0;i<=PROBEN;i++){
+      const p = line.getPointAtLength(len*i/PROBEN);
+      punkte.push([p.x, p.y]);
+    }
+
     line.style.strokeDasharray = len;
     line.style.strokeDashoffset = len;
     reveal.setAttribute("width", 0);
+
     const dur = 1350, t0 = performance.now();
     function step(now){
       const p = Math.min(1, (now-t0)/dur);
@@ -2134,9 +2166,9 @@
       line.style.strokeDashoffset = len*(1-e);
       reveal.setAttribute("width", (CH_W*e).toFixed(1));
       if(tip){
-        const pt = line.getPointAtLength(len*e);
-        tip.setAttribute("cx", pt.x.toFixed(1));
-        tip.setAttribute("cy", pt.y.toFixed(1));
+        const pt = punkte[Math.round(e*PROBEN)];
+        tip.setAttribute("cx", pt[0].toFixed(1));
+        tip.setAttribute("cy", pt[1].toFixed(1));
         // Am Anfang aufblenden, auf dem letzten F\u00fcnftel wieder ausblenden,
         // damit der Punkt nicht abrupt verschwindet.
         tip.setAttribute("opacity", (p < .12 ? p/.12 : (p > .8 ? (1-p)/.2 : 1)).toFixed(2));
@@ -2283,7 +2315,7 @@
       // Versatz mitgezogen: bei langsamer wachsenden Balken muss auch der
       // Abstand zwischen ihnen gr\u00f6\u00dfer werden, sonst verschmilzt die Staffelung.
       if(animOn) el.style.transitionDelay = (380 + i*55)+"ms";
-      el.style.height = el.getAttribute("data-h")+"%";
+      el.style.transform = "scaleY("+(parseFloat(el.getAttribute("data-h"))/100)+")";
     });
     animateChart(content);
 
@@ -2439,6 +2471,10 @@
     const notiz = (mitNotiz && h.note) ? '<span class="habit-note">'+escapeHtml(h.note)+'</span>' : '';
     return marke + '<span class="title-text"><span>'+escapeHtml(h.name)+'</span>'+notiz+'</span>';
   }
+
+  // Setzt einen Fortschrittsbalken. Bewusst \u00fcber transform statt width --
+  // siehe Kommentar bei .bar > span im Stilteil.
+  function setBar(el, pct){ if(el) el.style.transform = "scaleX("+(Math.max(0,Math.min(100,pct))/100)+")"; }
 
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
