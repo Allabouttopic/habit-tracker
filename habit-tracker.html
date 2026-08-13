@@ -140,9 +140,14 @@
   }
   .habit-card{cursor:grab}
   .habit-card:active{cursor:grabbing}
-  .habit-card.dragging{opacity:.4}
-  .habit-card.drag-over-top{box-shadow:inset 0 2px 0 var(--accent)}
-  .habit-card.drag-over-bottom{box-shadow:inset 0 -2px 0 var(--accent)}
+  /* Die gezogene Karte hebt sich sichtbar ab, statt nur blasser zu werden --
+     dadurch versteht man sofort, dass sie "in der Hand" ist. */
+  .habit-card.dragging{
+    opacity:.6;transform:scale(.97) rotate(-.6deg);cursor:grabbing;
+    box-shadow:0 12px 28px rgba(0,0,0,.5);z-index:5;
+  }
+  .habit-card.drag-over-top{box-shadow:inset 0 3px 0 var(--hc,var(--accent)),var(--card-shadow)}
+  .habit-card.drag-over-bottom{box-shadow:inset 0 -3px 0 var(--hc,var(--accent)),var(--card-shadow)}
   .habit-top{display:flex;align-items:center;gap:9px}
   .dot{width:12px;height:12px;border-radius:50%;flex:none}
   .habit-name{font-weight:600;font-size:14.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -493,6 +498,31 @@
   }
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+  /* ---------- Startbild ----------
+     Ein Raster fuellt sich im Zeitraffer mit den Farben deiner Habits -- ein
+     Jahr im Schnelldurchlauf. Laeuft nur, wenn Animationen eingeschaltet sind. */
+  .splash{
+    position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:24px;background:var(--bg);
+    transition:opacity 420ms var(--ease),transform 420ms var(--ease);
+  }
+  .splash.done{opacity:0;transform:scale(1.07);pointer-events:none}
+  .splash-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .splash-cell{
+    width:26px;height:26px;border-radius:7px;
+    background:var(--panel-2);border:1px solid var(--line);
+    opacity:0;transform:scale(.55);
+    transition:opacity 240ms var(--ease),transform 240ms var(--ease),
+               background-color 240ms var(--ease),border-color 240ms var(--ease);
+  }
+  .splash-cell.on{opacity:1;transform:scale(1)}
+  .splash-name{
+    font-size:17px;font-weight:700;letter-spacing:.3px;color:var(--text);
+    opacity:0;transform:translateY(6px);
+    transition:opacity 340ms var(--ease),transform 340ms var(--ease);
+  }
+  .splash.named .splash-name{opacity:1;transform:none}
+
   /* ---------- Segmentierter Umschalter ("Pille" mit gleitendem Hintergrund) ----------
      Der bewegliche Hintergrund (.seg-thumb) wird per JavaScript auf die Breite und
      Position des aktiven Knopfes gesetzt und gleitet dorthin, statt hart umzuspringen. */
@@ -619,12 +649,21 @@
 
   /* ---------- Untere Tab-Leiste (nur Handy, siehe Media Query unten) ---------- */
   .tabbar{display:none}
+  /* Alle fuenf Plaetze exakt gleich breit. Vorher war der +-Knopf schmaler als
+     die anderen; zusammen mit space-around ergab das ungleiche Abstaende --
+     77 Pixel links vom +, nur 69 rechts davon. */
   .tabbar button{
-    flex:1;border:none;background:transparent;color:var(--muted);
+    flex:0 0 20%;border:none;background:transparent;color:var(--muted);
     display:flex;flex-direction:column;align-items:center;gap:3px;
-    font-size:10.5px;font-weight:600;padding:6px 2px;
+    /* Etwas kleiner als vorher: bei festen Fuenfteln muss auch das laengste
+       Wort ("Einstellungen") in seinen Platz passen. */
+    font-size:9.5px;font-weight:600;padding:6px 1px;min-width:0;
     transition:color .2s ease,transform .2s ease;
   }
+  /* Nur die Beschriftungs-Knoepfe kuerzen. Der +-Knopf ist ausgenommen: sein
+     Koerper ragt absichtlich ueber die Leiste hinaus und wuerde sonst oben
+     abgeschnitten. */
+  .tabbar button:not(.fab){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tabbar .ti{position:relative;display:flex;align-items:center;justify-content:center;width:23px;height:23px}
   .tabbar button svg{width:23px;height:23px}
   .tabbar .ic-out,.tabbar .ic-fill{
@@ -632,7 +671,9 @@
     transition:opacity var(--dur-fast) var(--ease);
   }
   .tabbar .ic-fill{opacity:0}
-  .tabbar button.sel{color:var(--accent)}
+  /* --barc traegt die Farbe des geoeffneten Habits. Auf der Startseite steht
+     sie auf Weiss, dadurch bedeutet Farbe hier immer "du bist in diesem Habit". */
+  .tabbar button.sel{color:var(--barc, var(--accent))}
   .tabbar button.sel .ic-fill{opacity:1}
   .tabbar button.sel .ic-out{opacity:0}
   /* Kurzer Satz nach oben beim Aktivieren. "forwards" haelt die leicht
@@ -647,20 +688,41 @@
   /* Gleitender Hintergrund unter dem aktiven Tab, wie bei den Pillen oben */
   .tab-thumb{
     position:absolute;top:5px;left:0;width:0;height:52px;border-radius:15px;z-index:0;
-    background:rgba(79,140,255,.13);border:1px solid rgba(79,140,255,.22);
+    background:color-mix(in srgb, var(--barc, var(--accent)) 14%, transparent);
+    border:1px solid color-mix(in srgb, var(--barc, var(--accent)) 24%, transparent);
     transition:transform var(--dur) var(--ease), width var(--dur) var(--ease), opacity var(--dur-fast) var(--ease);
   }
   .tabbar button{position:relative;z-index:1}
   /* Der +-Knopf ragt bewusst ueber die Leiste hinaus. Weil die Leiste ihre
      Kinder unten ausrichtet, hebt ihn ein transform nach oben -- ein negativer
      Rand wuerde hier nichts bewirken. */
+  /* Der +-Knopf belegt denselben Platz wie die anderen; sein sichtbarer
+     Koerper steckt innen und ist darin zentriert. */
   .tabbar .fab{
-    flex:0 0 auto;width:58px;height:58px;border-radius:20px;transform:translateY(-13px);
-    background:var(--accent);color:#fff;align-items:center;justify-content:center;
-    box-shadow:0 8px 22px rgba(79,140,255,.5);
+    flex:0 0 20%;padding:0;background:none;box-shadow:none;border-radius:0;
+    align-items:center;justify-content:center;
   }
+  .fab-in{
+    position:relative;overflow:hidden;
+    width:58px;height:58px;border-radius:20px;transform:translateY(-13px);
+    background:var(--barc, var(--accent));color:var(--barfg,#fff);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 22px color-mix(in srgb, var(--barc, var(--accent)) 45%, transparent);
+    transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease),
+               box-shadow var(--dur) var(--ease),transform var(--dur-fast) var(--ease);
+  }
+  .fab-in .ti{position:relative;z-index:2}
   .tabbar .fab svg{width:27px;height:27px}
-  .tabbar .fab:active{transform:translateY(-13px) scale(.9)}
+  .tabbar .fab:active .fab-in{transform:translateY(-13px) scale(.9)}
+
+  /* Wasserglas: die neue Farbe steigt von unten auf. Die geschwungene
+     Oberkante laesst es nach Fluessigkeit aussehen statt nach einem Balken. */
+  .fab-fill{
+    position:absolute;left:-15%;right:-15%;bottom:0;height:0;z-index:1;
+    border-radius:46% 46% 0 0 / 20px 20px 0 0;pointer-events:none;
+    transition:height 620ms cubic-bezier(.3,.72,.2,1);
+  }
+  .fab-fill.rise{height:135%}
 
   /* ---------- Einstellungen ---------- */
   .icon-btn{width:38px;min-width:38px;height:38px;padding:0;border-radius:11px}
@@ -765,7 +827,10 @@
   /* ---------- Handy: Tab-Leiste unten statt Knoepfen in der Seitenleiste ---------- */
   @media (max-width:720px){
     .tabbar{
-      display:flex;align-items:flex-end;justify-content:space-around;gap:2px;
+      /* Kein Zwischenraum: die fuenf Plaetze teilen sich die Breite exakt auf.
+         Ein zusaetzlicher gap kaeme obendrauf und schoebe den letzten Knopf ueber
+         den rechten Rand hinaus. */
+      display:flex;align-items:flex-end;justify-content:space-between;gap:0;
       position:fixed;left:0;right:0;bottom:0;z-index:45;
       padding:7px 4px calc(7px + env(safe-area-inset-bottom));
       background:rgba(23,26,33,.94);border-top:1px solid var(--line);
@@ -829,6 +894,11 @@
 </style>
 </head>
 <body>
+  <div class="splash" id="splash" aria-hidden="true">
+    <div class="splash-grid" id="splashGrid"></div>
+    <div class="splash-name">Habit Tracker</div>
+  </div>
+
   <aside class="sidebar">
     <div class="brand">
       <h1>Habit Tracker</h1>
@@ -884,7 +954,7 @@
     <span class="tab-thumb" id="tabThumb"></span>
     <button data-tab="habits"><span class="ti"></span>Start</button>
     <button data-tab="cal"><span class="ti"></span>Kalender</button>
-    <button class="fab" data-tab="add" aria-label="Neuer Habit"><span class="ti"></span></button>
+    <button class="fab" data-tab="add" aria-label="Neuer Habit"><span class="fab-in"><span class="ti"></span></span></button>
     <button data-tab="stats"><span class="ti"></span>Statistik</button>
     <button data-tab="settings"><span class="ti"></span>Einstellungen</button>
   </nav>
@@ -987,7 +1057,7 @@
         </div>
         <div class="opt-row" style="margin-top:14px">
           <div>
-            <div class="opt-title">R&#252;ckw&#228;rts-Planung</div>
+            <div class="opt-title">Erfolgschancen</div>
             <div class="opt-sub">Zeigt in der Statistik, an wie vielen Tagen pro Woche du ab jetzt dranbleiben musst</div>
           </div>
           <button class="switch" id="planSwitch" role="switch" aria-checked="true"><span></span></button>
@@ -1424,10 +1494,12 @@
       if(Math.abs(dy) < 1) return;
       c.style.transition = "none";
       c.style.transform = "translateY("+dy+"px)";
-      requestAnimationFrame(()=>{
-        c.style.transition = "transform .25s ease";
-        c.style.transform = "";
-      });
+      // Reflow erzwingen statt auf das n\u00e4chste Bild zu warten: l\u00e4uft die Seite
+      // gerade im Hintergrund, k\u00e4me requestAnimationFrame unter Umst\u00e4nden nie,
+      // und die Karte bliebe dauerhaft verschoben stehen.
+      void c.offsetWidth;
+      c.style.transition = "transform 340ms var(--ease)";
+      c.style.transform = "";
     });
   }
 
@@ -2109,10 +2181,9 @@
             '<stop offset="0%" stop-color="'+color+'" stop-opacity=".40"/>'+
             '<stop offset="100%" stop-color="'+color+'" stop-opacity="0"/>'+
           '</linearGradient>'+
-          '<clipPath id="'+gid+'c"><rect class="reveal" x="0" y="0" width="'+CH_W+'" height="'+CH_H+'"/></clipPath>'+
         '</defs>'+
         grid+
-        '<g clip-path="url(#'+gid+'c)">'+
+        '<g class="plot">'+
           '<path d="'+area+'" fill="url(#'+gid+'f)"/>'+
           '<path class="line" d="'+d+'" fill="none" stroke="'+color+'" stroke-width="2.6" '+
             'stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>'+
@@ -2135,10 +2206,10 @@
     const svg = root.querySelector(".chart-plot svg");
     if(!svg) return;
     const line = svg.querySelector("path.line");
-    const reveal = svg.querySelector("rect.reveal");
+    const plot = svg.querySelector("g.plot");
     const tip = svg.querySelector("ellipse.tip");
-    if(!line || !reveal) return;
-    if(!animOn){ reveal.setAttribute("width", CH_W); return; }
+    if(!line || !plot) return;
+    if(!animOn){ plot.style.clipPath = ""; return; }
 
     // Die Fl\u00e4che wird in der Breite gestreckt dargestellt. F\u00fcr einen runden
     // Punkt m\u00fcssen die beiden Radien um genau dieses Verh\u00e4ltnis auseinander.
@@ -2163,14 +2234,17 @@
 
     line.style.strokeDasharray = len;
     line.style.strokeDashoffset = len;
-    reveal.setAttribute("width", 0);
+    // Freigabe der Fl\u00e4che \u00fcber clip-path statt \u00fcber ein Rechteck im clipPath:
+    // eine \u00c4nderung der SVG-Geometrie muss der Browser jedes Mal neu auswerten,
+    // clip-path kann er dagegen direkt auf der Grafikkarte anwenden.
+    plot.style.clipPath = "inset(0 100% 0 0)";
 
     const dur = 1350, t0 = performance.now();
     function step(now){
       const p = Math.min(1, (now-t0)/dur);
       const e = 1 - Math.pow(1-p, 3);
       line.style.strokeDashoffset = len*(1-e);
-      reveal.setAttribute("width", (CH_W*e).toFixed(1));
+      plot.style.clipPath = "inset(0 "+((1-e)*100).toFixed(2)+"% 0 0)";
       if(tip){
         const pt = punkte[Math.round(e*PROBEN)];
         tip.setAttribute("cx", pt[0].toFixed(1));
@@ -2182,7 +2256,7 @@
       if(p < 1) requestAnimationFrame(step);
       else {
         line.style.strokeDasharray=""; line.style.strokeDashoffset="";
-        reveal.setAttribute("width", CH_W);
+        plot.style.clipPath = "";
         if(tip) tip.setAttribute("opacity", 0);
       }
     }
@@ -2223,12 +2297,22 @@
     };
     if(!animOn || !("IntersectionObserver" in window)){ ziele.forEach(zeigen); return; }
     const beob = new IntersectionObserver((eintraege, o)=>{
+      // Wenn beim \u00d6ffnen mehrere Bl\u00f6cke gleichzeitig ins Bild kommen, laufen
+      // sie versetzt los statt alle im selben Moment.
+      let i = 0;
       eintraege.forEach(e=>{
         if(!e.isIntersecting) return;
         o.unobserve(e.target);   // jeder Block l\u00e4uft genau einmal
-        zeigen(e.target);
+        const el = e.target, verzug = i*110;
+        i++;
+        if(verzug) setTimeout(()=>zeigen(el), verzug); else zeigen(el);
       });
-    }, { threshold:.25 });
+    }, {
+      // Ein Block muss deutlich im Bild stehen, nicht nur hineinragen. Der
+      // eingezogene untere Rand sorgt daf\u00fcr, dass er nicht schon startet,
+      // w\u00e4hrend er gerade erst am unteren Bildrand auftaucht.
+      threshold:.4, rootMargin:"0px 0px -14% 0px"
+    });
     ziele.forEach(el=>beob.observe(el));
   }
 
@@ -2307,8 +2391,7 @@
         kopf = fc.prognose;
         farbe = "#ff8a8a";
         text = 'von '+fc.ziel+' zum Jahresende<br>'+
-               '<span style="color:#ff8a8a">Selbst mit jedem verbleibenden Tag nicht mehr erreichbar. '+
-               'Ein angepasstes Ziel w\u00e4re ehrlicher.</span>';
+               '<span style="color:#ff8a8a">Ziel nicht mehr erreichbar.</span>';
       }else{
         kopf = fc.prognose;
         farbe = vorPlan ? "var(--good)" : color;
@@ -2321,7 +2404,7 @@
 
       html += '<div class="card reveal">'+
         '<div class="card-head"><div>'+
-          '<div class="card-title">'+(erreicht ? "Ziel" : "R\u00fcckw\u00e4rts-Planung")+'</div>'+
+          '<div class="card-title">'+(erreicht ? "Ziel" : "Erfolgschancen")+'</div>'+
           '<div class="card-sub">Aus deiner Quote der letzten 30 Tage ('+pctQ+'%)</div>'+
         '</div></div>'+
         '<div class="fc-row">'+
@@ -2465,6 +2548,42 @@
     toast(teile.length ? teile.join(" \u00b7 ")+" f\u00fcr heute." : "Nichts ge\u00e4ndert.");
   }
 
+  // Helligkeit einer Farbe (0..1) nach der \u00fcblichen Gewichtung der Kan\u00e4le --
+  // Gr\u00fcn wirkt auf das Auge heller als Blau. Entscheidet, ob das \uff0b dunkel
+  // oder wei\u00df sein muss, damit es auf dem Knopf lesbar bleibt.
+  function istHell(hex){
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+    if(!m) return true;
+    const n = parseInt(m[1],16);
+    const r=(n>>16&255)/255, g=(n>>8&255)/255, b=(n&255)/255;
+    return (0.299*r + 0.587*g + 0.114*b) > 0.62;
+  }
+
+  // F\u00e4rbt die untere Leiste in der Farbe des ge\u00f6ffneten Habits. Auf der
+  // Startseite Wei\u00df -- so bedeutet Farbe dort immer "du steckst in diesem Habit".
+  function setBarColor(farbe){
+    const bar = document.getElementById("tabbar");
+    if(!bar) return;
+    const alt = bar.style.getPropertyValue("--barc") || "";
+    if(alt === farbe) return;
+    bar.style.setProperty("--barc", farbe);
+    bar.style.setProperty("--barfg", istHell(farbe) ? "#171a21" : "#ffffff");
+    if(alt) fillFab(farbe);   // beim allerersten Setzen noch keine Welle
+  }
+
+  // Die neue Farbe steigt im \uff0b-Knopf von unten auf, wie Wasser im Glas.
+  function fillFab(farbe){
+    const inn = document.querySelector(".fab-in");
+    if(!inn || !animOn) return;
+    const welle = document.createElement("span");
+    welle.className = "fab-fill";
+    welle.style.background = farbe;
+    inn.appendChild(welle);
+    // Erst im n\u00e4chsten Bild steigen lassen, sonst gibt es keine Strecke
+    requestAnimationFrame(()=>welle.classList.add("rise"));
+    setTimeout(()=>welle.remove(), 900);
+  }
+
   function updateTabbar(){
     const active = !mobileDetail ? "habits" : (view==="stats" ? "stats" : "cal");
     document.querySelectorAll('#tabbar button[data-tab]').forEach(b=>{
@@ -2516,7 +2635,10 @@
 
   function renderAll(){
     ensureSelection(); applyMobileDetailClass();
-    renderSidebar(); renderMain(); updateTabbar(); measureTopbar(); consumeAnim();
+    renderSidebar(); renderMain(); updateTabbar(); measureTopbar();
+    const offen = getHabit(selectedId);
+    setBarColor((mobileDetail && offen) ? offen.color : "#ffffff");
+    consumeAnim();
   }
 
   // Kopfzeile eines Habits: Symbol (oder Punkt), Name und darunter die
@@ -2983,8 +3105,43 @@
     }
   });
 
+  // ---------- Startbild ----------
+  function playSplash(){
+    const s = document.getElementById("splash");
+    if(!s) return;
+    if(!animOn){ s.remove(); return; }
+    const grid = document.getElementById("splashGrid");
+    // Die eigenen Habit-Farben, sonst die Vorgabepalette
+    const farben = state.habits.length
+      ? [...new Set(state.habits.map(h=>h.color))]
+      : COLORS.slice(0,4);
+    const zellen = [];
+    for(let i=0;i<25;i++){
+      const c = document.createElement("div");
+      c.className = "splash-cell";
+      grid.appendChild(c); zellen.push(c);
+    }
+    // Diagonale Welle von links oben nach rechts unten
+    zellen.forEach((c,i)=>{
+      const verzug = (Math.floor(i/5) + (i%5)) * 58;
+      setTimeout(()=>{
+        c.classList.add("on");
+        // Rund zwei Drittel der Felder werden gef\u00fcllt -- ein volles Raster
+        // s\u00e4he nach Dekoration aus, ein halbleeres nach echtem Jahr.
+        if((i*7 + 3) % 10 < 6){
+          c.style.background = farben[i % farben.length];
+          c.style.borderColor = "transparent";
+        }
+      }, verzug);
+    });
+    setTimeout(()=>s.classList.add("named"), 640);
+    setTimeout(()=>s.classList.add("done"), 1300);
+    setTimeout(()=>s.remove(), 1780);
+  }
+
   document.body.classList.toggle("no-anim", !animOn);
   renderAll();
+  playSplash();
   setTimeout(maybeShowBackupReminder, 800);
 })();
 </script>
