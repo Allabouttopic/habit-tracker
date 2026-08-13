@@ -507,15 +507,31 @@
     transition:opacity 420ms var(--ease),transform 420ms var(--ease);
   }
   .splash.done{opacity:0;transform:scale(1.07);pointer-events:none}
-  .splash-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-  .splash-cell{
-    width:26px;height:26px;border-radius:7px;
-    background:var(--panel-2);border:1px solid var(--line);
-    opacity:0;transform:scale(.55);
-    transition:opacity 240ms var(--ease),transform 240ms var(--ease),
-               background-color 240ms var(--ease),border-color 240ms var(--ease);
+
+  /* Vier Balken, jeder etwas voller als der vorige, jeder in eigener Farbe.
+     Bewusst ohne Bezug zu echten Werten -- das ist eine Begruessung, keine
+     Auskunft. Gefuellt wird ueber transform, damit die Grafikkarte es uebernimmt. */
+  .splash-bars{display:flex;flex-direction:column;gap:13px}
+  .splash-bar{position:relative;display:flex;align-items:center}
+  .splash-track{
+    width:150px;height:11px;border-radius:6px;overflow:hidden;
+    background:var(--panel-2);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);
   }
-  .splash-cell.on{opacity:1;transform:scale(1)}
+  .splash-fill{
+    display:block;width:100%;height:100%;transform-origin:left;transform:scaleX(0);
+    transition:transform 520ms var(--ease);
+  }
+  /* Der Haken steht ausserhalb des Textflusses. Sonst belegte er in JEDER
+     Zeile Platz -- auch in denen ohne Haken -- und schoebe alle Balken nach
+     links, weg von der Mitte unter dem Schriftzug. */
+  .splash-check{
+    position:absolute;left:calc(100% + 11px);top:50%;
+    width:19px;height:19px;
+    opacity:0;transform:translateY(-50%) scale(.4);
+    transition:opacity 260ms var(--ease),transform 260ms cubic-bezier(.34,1.4,.5,1);
+  }
+  .splash-check.on{opacity:1;transform:translateY(-50%) scale(1)}
+  .splash-check svg{width:19px;height:19px;display:block}
   .splash-name{
     font-size:17px;font-weight:700;letter-spacing:.3px;color:var(--text);
     opacity:0;transform:translateY(6px);
@@ -587,7 +603,10 @@
   .chart-empty{color:var(--muted);font-size:13px;padding:26px 4px;text-align:center}
 
   /* Hochrechnung */
-  .fc-row{display:flex;align-items:center;gap:14px}
+  /* Zahl und Text als Paar mittig setzen. Vorher standen sie links und rechts
+     blieb je nach Textlaenge ein leeres Feld uebrig. */
+  .fc-row{display:flex;align-items:center;justify-content:center;gap:16px;text-align:left}
+  .fc-row .fc-txt{flex:0 1 auto;max-width:30ch}
   .fc-big{font-size:36px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
   .fc-txt{color:var(--muted);font-size:12.5px;line-height:1.5}
   .fc-bar{height:8px;border-radius:5px;background:#0c0e12;margin-top:13px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
@@ -686,8 +705,11 @@
   .tabbar button.sel .ti{animation:tabHop 420ms var(--ease) forwards}
   .tabbar button:active{transform:scale(.94)}
   /* Gleitender Hintergrund unter dem aktiven Tab, wie bei den Pillen oben */
+  /* Hoehe und Abstand von oben werden per JavaScript aus dem aktiven Knopf
+     uebernommen. Feste Werte lagen daneben, sobald sich Innenabstand oder
+     Schriftgroesse der Leiste aenderten. */
   .tab-thumb{
-    position:absolute;top:5px;left:0;width:0;height:52px;border-radius:15px;z-index:0;
+    position:absolute;top:0;left:0;width:0;height:0;border-radius:15px;z-index:0;
     background:color-mix(in srgb, var(--barc, var(--accent)) 14%, transparent);
     border:1px solid color-mix(in srgb, var(--barc, var(--accent)) 24%, transparent);
     transition:transform var(--dur) var(--ease), width var(--dur) var(--ease), opacity var(--dur-fast) var(--ease);
@@ -715,14 +737,17 @@
   .tabbar .fab svg{width:27px;height:27px}
   .tabbar .fab:active .fab-in{transform:translateY(-13px) scale(.9)}
 
-  /* Wasserglas: die neue Farbe steigt von unten auf. Die geschwungene
-     Oberkante laesst es nach Fluessigkeit aussehen statt nach einem Balken. */
+  /* Die neue Farbe breitet sich aus der Mitte des Knopfes aus. Ueber transform
+     statt ueber Breite und Hoehe -- eine Skalierung uebernimmt die Grafikkarte,
+     eine Groessenaenderung muesste der Browser in jedem Bild neu berechnen.
+     90px decken die Diagonale des 58er-Quadrats (82px) sicher ab. */
   .fab-fill{
-    position:absolute;left:-15%;right:-15%;bottom:0;height:0;z-index:1;
-    border-radius:46% 46% 0 0 / 20px 20px 0 0;pointer-events:none;
-    transition:height 620ms cubic-bezier(.3,.72,.2,1);
+    position:absolute;left:50%;top:50%;width:90px;height:90px;margin:-45px 0 0 -45px;
+    border-radius:50%;z-index:1;pointer-events:none;
+    transform:scale(0);
+    transition:transform 1000ms var(--ease);
   }
-  .fab-fill.rise{height:135%}
+  .fab-fill.rise{transform:scale(1)}
 
   /* ---------- Einstellungen ---------- */
   .icon-btn{width:38px;min-width:38px;height:38px;padding:0;border-radius:11px}
@@ -895,7 +920,7 @@
 </head>
 <body>
   <div class="splash" id="splash" aria-hidden="true">
-    <div class="splash-grid" id="splashGrid"></div>
+    <div class="splash-bars" id="splashBars"></div>
     <div class="splash-name">Habit Tracker</div>
   </div>
 
@@ -2581,7 +2606,7 @@
     inn.appendChild(welle);
     // Erst im n\u00e4chsten Bild steigen lassen, sonst gibt es keine Strecke
     requestAnimationFrame(()=>welle.classList.add("rise"));
-    setTimeout(()=>welle.remove(), 900);
+    setTimeout(()=>welle.remove(), 1250);
   }
 
   function updateTabbar(){
@@ -2609,6 +2634,9 @@
     if(erstesMal) thumb.style.transition = "none";
     thumb.style.opacity = "1";
     thumb.style.width = sel.offsetWidth+"px";
+    // Senkrecht exakt auf den Knopf legen, leicht nach au\u00dfen aufgeweitet
+    thumb.style.height = (sel.offsetHeight + 8)+"px";
+    thumb.style.top = (sel.offsetTop - 4)+"px";
     thumb.style.transform = "translateX("+sel.offsetLeft+"px)";
     if(erstesMal){
       // Reflow erzwingen und den \u00dcbergang sofort wieder freigeben. \u00dcber
@@ -3110,33 +3138,44 @@
     const s = document.getElementById("splash");
     if(!s) return;
     if(!animOn){ s.remove(); return; }
-    const grid = document.getElementById("splashGrid");
-    // Die eigenen Habit-Farben, sonst die Vorgabepalette
-    const farben = state.habits.length
-      ? [...new Set(state.habits.map(h=>h.color))]
-      : COLORS.slice(0,4);
-    const zellen = [];
-    for(let i=0;i<25;i++){
-      const c = document.createElement("div");
-      c.className = "splash-cell";
-      grid.appendChild(c); zellen.push(c);
-    }
-    // Diagonale Welle von links oben nach rechts unten
-    zellen.forEach((c,i)=>{
-      const verzug = (Math.floor(i/5) + (i%5)) * 58;
-      setTimeout(()=>{
-        c.classList.add("on");
-        // Rund zwei Drittel der Felder werden gef\u00fcllt -- ein volles Raster
-        // s\u00e4he nach Dekoration aus, ein halbleeres nach echtem Jahr.
-        if((i*7 + 3) % 10 < 6){
-          c.style.background = farben[i % farben.length];
-          c.style.borderColor = "transparent";
-        }
-      }, verzug);
+    const wrap = document.getElementById("splashBars");
+    // Die eigenen Habit-Farben, aufgef\u00fcllt aus der Vorgabepalette, falls
+    // jemand weniger als vier Habits hat oder ganz neu anf\u00e4ngt.
+    const eigene = [...new Set(state.habits.map(h=>h.color))];
+    const farben = [];
+    for(let i=0;i<4;i++) farben.push(eigene[i] || COLORS[i % COLORS.length]);
+
+    const anteile = [0.28, 0.52, 0.76, 1];   // jeder Balken voller als der vorige
+    const fuellungen = [];
+    anteile.forEach((anteil,i)=>{
+      const zeile = document.createElement("div");
+      zeile.className = "splash-bar";
+      const spur = document.createElement("div");
+      spur.className = "splash-track";
+      const fuell = document.createElement("span");
+      fuell.className = "splash-fill";
+      fuell.style.cssText = gradientStyle(farben[i]);
+      spur.appendChild(fuell);
+      const haken = document.createElement("span");
+      haken.className = "splash-check";
+      haken.style.color = farben[i];
+      haken.innerHTML = ICONS.check;
+      zeile.appendChild(spur); zeile.appendChild(haken);
+      wrap.appendChild(zeile);
+      fuellungen.push({ fuell:fuell, haken:haken, anteil:anteil, voll: anteil >= 1 });
     });
+
+    // Nacheinander f\u00fcllen. Der Haken erscheint nur beim vollen Balken --
+    // sonst w\u00fcrde er nichts bedeuten.
+    fuellungen.forEach((b,i)=>{
+      const start = 120 + i*260;
+      setTimeout(()=>{ b.fuell.style.transform = "scaleX("+b.anteil+")"; }, start);
+      if(b.voll) setTimeout(()=>b.haken.classList.add("on"), start + 520);
+    });
+
     setTimeout(()=>s.classList.add("named"), 640);
-    setTimeout(()=>s.classList.add("done"), 1300);
-    setTimeout(()=>s.remove(), 1780);
+    setTimeout(()=>s.classList.add("done"), 1900);
+    setTimeout(()=>s.remove(), 2380);
   }
 
   document.body.classList.toggle("no-anim", !animOn);
