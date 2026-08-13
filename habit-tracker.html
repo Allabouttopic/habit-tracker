@@ -198,10 +198,15 @@
     padding:10px 26px 12px;position:sticky;top:var(--topbar-h,64px);z-index:4;
     overflow:hidden;background:var(--bg);border-bottom:1px solid var(--line);
   }
+  /* Lichtschein als Farbverlauf, NICHT als weichgezeichneter Kreis.
+     filter:blur() zwingt den Browser zu einer eigenen Ebene; in Verbindung
+     mit position:sticky und overflow:hidden fiel beim Neuaufbau dieser Ebene
+     gelegentlich der Hintergrund weg -- sichtbar als schwarzer Kasten hinter
+     den Zahlen, sobald die Zahl daneben ihre Puls-Animation spielte. */
   .goal-wrap::before{
-    content:"";position:absolute;top:-70px;left:-70px;width:280px;height:280px;
-    background:var(--glow,transparent);border-radius:50%;filter:blur(50px);
-    opacity:.28;pointer-events:none;z-index:0;
+    content:"";position:absolute;top:-150px;left:-150px;width:440px;height:440px;
+    background:radial-gradient(circle closest-side, var(--glow,transparent), transparent);
+    opacity:.34;pointer-events:none;z-index:0;
   }
   .goal-wrap > *{position:relative;z-index:1}
   .goal-head{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;min-width:0}
@@ -348,7 +353,6 @@
      Hintergrundfarbe bei hellen Habit-Farben wenig Kontrast zur Zahl hat. */
   .mcell .dt{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.9);opacity:0;transition:opacity var(--dur-fast) var(--ease)}
   .mcell.done .dt{opacity:1}
-  .month-foot{margin-top:12px;color:var(--muted);font-size:12.5px;text-align:center;font-variant-numeric:tabular-nums}
 
   /* Jahresuebersicht: zwoelf kleine Monatsraster */
   .year-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
@@ -369,19 +373,6 @@
   .ycell.done{border-color:transparent;color:#fff;font-weight:700}
   .ycell.today{outline:1.5px solid var(--today);outline-offset:1px}
   .yfoot{margin-top:9px;color:var(--muted);font-size:11px;text-align:center;font-variant-numeric:tabular-nums}
-
-  /* Einmaliger Bedienhinweis statt dauerhafter Legende */
-  .cal-tip{
-    display:flex;align-items:flex-start;gap:10px;margin:20px 0 0;padding:11px 12px;
-    border-radius:11px;border:1px solid var(--line);background:var(--panel);
-    color:var(--muted);font-size:12.5px;line-height:1.45;
-  }
-  .cal-tip button{
-    margin-left:auto;flex:none;width:24px;height:24px;border-radius:7px;padding:0;
-    border:1px solid var(--line);background:var(--panel-2);color:var(--muted);font-size:12px;
-    transition:color var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease);
-  }
-  .cal-tip button:hover{color:var(--text);border-color:#3a4152}
 
   .empty{padding:60px 26px;color:var(--muted);max-width:560px}
   .empty h2{color:var(--text);font-weight:700}
@@ -598,9 +589,19 @@
 
   /* ---------- Uebergaenge zwischen den Ansichten ---------- */
   @keyframes viewIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-  @keyframes viewInRight{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:none}}
-  @keyframes viewInLeft{from{opacity:0;transform:translateX(-26px)}to{opacity:1;transform:none}}
+  @keyframes viewInRight{from{opacity:0;transform:translateX(34px)}to{opacity:1;transform:none}}
+  @keyframes viewInLeft{from{opacity:0;transform:translateX(-34px)}to{opacity:1;transform:none}}
   .anim-up{animation:viewIn var(--dur) var(--ease) both}
+
+  /* Bloecke, die erst loslegen, wenn man sie tatsaechlich sieht. Sie starten
+     unsichtbar und bekommen beim Hereinscrollen die Klasse "shown". */
+  .reveal{opacity:0;transform:translateY(14px)}
+  .reveal.shown{animation:viewIn var(--dur) var(--ease) forwards}
+  /* Die Kachelzeile selbst bleibt stehen, nur die Kacheln laufen versetzt ein */
+  .tiles.reveal{opacity:1;transform:none}
+  .tiles.reveal .tile{opacity:0}
+  .tiles.reveal.shown .tile{animation:viewIn var(--dur) var(--ease) both;animation-delay:var(--d,0ms)}
+  body.no-anim .reveal,body.no-anim .tiles.reveal .tile{opacity:1;transform:none;animation:none}
   .anim-right{animation:viewInRight var(--dur) var(--ease) both}
   .anim-left{animation:viewInLeft var(--dur) var(--ease) both}
 
@@ -624,10 +625,24 @@
     font-size:10.5px;font-weight:600;padding:6px 2px;
     transition:color .2s ease,transform .2s ease;
   }
-  .tabbar .ti{display:flex;align-items:center;justify-content:center}
-  .tabbar button svg{width:23px;height:23px;transition:transform var(--dur-fast) var(--ease)}
+  .tabbar .ti{position:relative;display:flex;align-items:center;justify-content:center;width:23px;height:23px}
+  .tabbar button svg{width:23px;height:23px}
+  .tabbar .ic-out,.tabbar .ic-fill{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    transition:opacity var(--dur-fast) var(--ease);
+  }
+  .tabbar .ic-fill{opacity:0}
   .tabbar button.sel{color:var(--accent)}
-  .tabbar button.sel svg{transform:translateY(-1px) scale(1.06)}
+  .tabbar button.sel .ic-fill{opacity:1}
+  .tabbar button.sel .ic-out{opacity:0}
+  /* Kurzer Satz nach oben beim Aktivieren. "forwards" haelt die leicht
+     angehobene Endlage, damit der aktive Reiter auch danach hervorsteht. */
+  @keyframes tabHop{
+    0%{transform:translateY(0) scale(1)}
+    45%{transform:translateY(-5px) scale(1.16)}
+    100%{transform:translateY(-1px) scale(1.06)}
+  }
+  .tabbar button.sel .ti{animation:tabHop 420ms var(--ease) forwards}
   .tabbar button:active{transform:scale(.94)}
   /* Gleitender Hintergrund unter dem aktiven Tab, wie bei den Pillen oben */
   .tab-thumb{
@@ -696,7 +711,7 @@
     .mcell,.bcell,.ycell.day{border:1px solid #bbb !important}
     .mcell.out{border-color:transparent !important}
     .bcell.blank{border-color:transparent !important}
-    .wd,.band-wd,.band-months,.ymonth h4,.yfoot,.month-foot{color:#333}
+    .wd,.band-wd,.band-months,.ymonth h4,.yfoot{color:#333}
     .ymonth{border:1px solid #bbb !important;box-shadow:none !important}
     /* Ohne diese Freigabe druckt der Browser Flaechenfarben standardmaessig weg */
     .goal-bar,.goal-bar > span,.mcell,.bcell,.ycell,
@@ -970,6 +985,13 @@
           </div>
           <button class="switch" id="animSwitch" role="switch" aria-checked="true"><span></span></button>
         </div>
+        <div class="opt-row" style="margin-top:14px">
+          <div>
+            <div class="opt-title">R&#252;ckw&#228;rts-Planung</div>
+            <div class="opt-sub">Zeigt in der Statistik, an wie vielen Tagen pro Woche du ab jetzt dranbleiben musst</div>
+          </div>
+          <button class="switch" id="planSwitch" role="switch" aria-checked="true"><span></span></button>
+        </div>
       </div>
 
       <div class="sheet-section" id="yearSection">
@@ -1025,7 +1047,6 @@
   // Tab-Leiste unten, am Mac \u00fcber den Pillen-Umschalter in der Kopfzeile.
   const VIEW_KEY = "habitTracker.view";
   const CALMODE_KEY = "habitTracker.calMode";
-  const TIP_KEY = "habitTracker.tipSeen";
   const ANIM_KEY = "habitTracker.anim";
   const SCOPE_KEY = "habitTracker.statsScope";
   const RANGE_KEY = "habitTracker.statsRange";
@@ -1042,6 +1063,8 @@
   let statsScope = localStorage.getItem(SCOPE_KEY)==="all" ? "all" : "habit";
   let statsRange = RANGES.some(r=>r.id===localStorage.getItem(RANGE_KEY)) ? localStorage.getItem(RANGE_KEY) : "30d";
   let animOn = localStorage.getItem(ANIM_KEY) !== "0";
+  const PLAN_KEY = "habitTracker.plan";
+  let planOn = localStorage.getItem(PLAN_KEY) !== "0";
   let pendingAnim = null;    // { sel, cls } -- welche Ansicht beim n\u00e4chsten Render einfliegen soll
   let gradSeq = 0;           // fortlaufende Nummer f\u00fcr eindeutige SVG-Verlaufs-IDs
   let sidebarIntro = true;   // Habit-Liste einmalig versetzt einlaufen lassen
@@ -1091,11 +1114,23 @@
       'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>';
   }
 
+  // F\u00fcr die drei Seiten-Reiter je eine Umriss- und eine gef\u00fcllte Fassung.
+  // Beide liegen \u00fcbereinander im DOM; beim Wechsel wird nur die Deckkraft
+  // getauscht -- das ist weicher als ein Austausch des Inhalts.
   const TAB_ICONS = {
-    habits:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2.4"/><rect x="13" y="3" width="8" height="8" rx="2.4"/><rect x="3" y="13" width="8" height="8" rx="2.4"/><rect x="13" y="13" width="8" height="8" rx="2.4"/></svg>',
-    cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3.2"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="8.5" cy="15" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="15" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15" r="1.1" fill="currentColor" stroke="none"/></svg>',
+    habits:{
+      out:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3.6" y="3.6" width="6.8" height="6.8" rx="2.2"/><rect x="13.6" y="3.6" width="6.8" height="6.8" rx="2.2"/><rect x="3.6" y="13.6" width="6.8" height="6.8" rx="2.2"/><rect x="13.6" y="13.6" width="6.8" height="6.8" rx="2.2"/></svg>',
+      fill:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2.4"/><rect x="13" y="3" width="8" height="8" rx="2.4"/><rect x="3" y="13" width="8" height="8" rx="2.4"/><rect x="13" y="13" width="8" height="8" rx="2.4"/></svg>'
+    },
+    cal:{
+      out:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3.2"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="8.5" cy="15" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="15" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15" r="1.1" fill="currentColor" stroke="none"/></svg>',
+      fill:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3.2" fill="currentColor" fill-opacity=".24"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="8.5" cy="15" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="15" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15" r="1.2" fill="currentColor" stroke="none"/></svg>'
+    },
+    stats:{
+      out:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3.6" y="12.6" width="3.8" height="7.8" rx="1.8"/><rect x="10.1" y="7.6" width="3.8" height="12.8" rx="1.8"/><rect x="16.6" y="3.6" width="3.8" height="16.8" rx="1.8"/></svg>',
+      fill:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="12" width="4.4" height="9" rx="2"/><rect x="9.8" y="7" width="4.4" height="14" rx="2"/><rect x="16.6" y="3" width="4.4" height="18" rx="2"/></svg>'
+    },
     add:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
-    stats:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="12" width="4.4" height="9" rx="2"/><rect x="9.8" y="7" width="4.4" height="14" rx="2"/><rect x="16.6" y="3" width="4.4" height="18" rx="2"/></svg>',
     settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 12h2M10 12h10M4 17h8M16 17h4"/><circle cx="16" cy="7" r="2.1"/><circle cx="8" cy="12" r="2.1"/><circle cx="14" cy="17" r="2.1"/></svg>'
   };
 
@@ -1595,15 +1630,8 @@
 
     html += (calMode==="year") ? buildYear(h) : (buildBand(h) + buildMonthPages(h, calMonth, wave));
 
-    // Legende entf\u00e4llt -- die Farben erkl\u00e4ren sich von selbst. Der Bedienhinweis
-    // erscheint nur, solange er nicht weggeklickt wurde.
-    if(!localStorage.getItem(TIP_KEY)){
-      html += '<div class="cal-tip" id="calTip"><span>'+
-        (calMode==="year"
-          ? 'Tipp: Monat antippen, um ihn zu \u00f6ffnen.'
-          : 'Tipp: Tag antippen zum Abhaken \u00b7 Umschalt+Klick f\u00fcr einen ganzen Bereich \u00b7 im Band oben zu einem Monat springen.')+
-        '</span><button id="tipClose" aria-label="Hinweis ausblenden">\u2715</button></div>';
-    }
+    // Weder Legende noch Bedienhinweis: die Farben und die Felder erkl\u00e4ren
+    // sich beim Antippen von selbst, und beides kostete dauerhaft Platz.
     html += '</div>';
 
     content.innerHTML = html;
@@ -1645,28 +1673,7 @@
     void el.offsetWidth;
     el.classList.add(done ? "pulse-on" : "pulse-off");
   }
-  // Z\u00e4hlt f\u00fcr die Seite, auf der die angeklickte Zelle liegt -- nicht f\u00fcr den
-  // gerade sichtbaren Monat, denn bei einem Bereich \u00fcber einen Monatswechsel
-  // hinweg w\u00e4ren das zwei verschiedene.
-  function updateMonthFoot(cell, h){
-    const seite = cell.closest(".month-page");
-    if(!seite) return;
-    const m = parseInt(seite.dataset.m, 10);
-    const dim = daysInMonth(h.year, m);
-    let c = 0;
-    for(let d=1; d<=dim; d++) if((h.days||{})[key(h.year,m,d)]) c++;
-    const foot = seite.querySelector(".month-foot");
-    if(foot) foot.textContent = c+" von "+dim+" Tagen erf\u00fcllt";
-  }
-
   function wireCalendar(content, h, wave){
-    const tipClose = content.querySelector("#tipClose");
-    if(tipClose) tipClose.addEventListener("click", ()=>{
-      localStorage.setItem(TIP_KEY, "1");
-      const tip = content.querySelector("#calTip");
-      if(tip) tip.remove();
-    });
-
     fitBand(content, true);
 
     const modeSw = content.querySelector("#calModeSwitch");
@@ -1743,7 +1750,6 @@
         updateMainStats(h);
         updateSidebarCard(h);
         updateBandCell(content, k, nowDone, h.color);
-        updateMonthFoot(cell, h);
         lastClickedKey = { habitId:h.id, key:k };
       });
     });
@@ -1871,7 +1877,7 @@
         (style?' style="'+style+'"':'')+' data-k="'+k+'">'+d.getDate()+'<span class="dt"></span></button>';
     }
     raster += '</div>';
-    return raster + '<div class="month-foot">'+erfuellt+' von '+geplant+' Tagen erf\u00fcllt</div>';
+    return raster;
   }
 
   // Alle zw\u00f6lf Monate nebeneinander. Der sichtbare Ausschnitt wird \u00fcber die
@@ -2063,7 +2069,7 @@
   }
 
   function statTile(icon, val, label, color, i){
-    return '<div class="tile anim-up" style="--tint:'+color+';animation-delay:'+(i*70)+'ms">'+
+    return '<div class="tile" style="--tint:'+color+';--d:'+(i*70)+'ms">'+
       '<div class="ic">'+icon+'</div>'+
       '<div class="val" data-count="'+val+'">0</div>'+
       '<div class="lbl">'+label+'</div></div>';
@@ -2183,6 +2189,49 @@
     requestAnimationFrame(step);
   }
 
+  // Zahlen in den Kacheln von 0 hochz\u00e4hlen, leicht versetzt
+  function startTileCounts(root){
+    root.querySelectorAll(".tile .val").forEach((el,i)=>{
+      const to = parseInt(el.getAttribute("data-count"), 10) || 0;
+      if(!animOn){ el.textContent = to; return; }
+      el.textContent = "0";
+      setTimeout(()=>animateNumber(el, to), 140 + i*90);
+    });
+  }
+  // Monatsbalken nacheinander hochwachsen lassen. Der erzwungene Reflow sorgt
+  // daf\u00fcr, dass der 0-Zustand als Ausgangswert des \u00dcbergangs gilt.
+  function startMonthBars(root){
+    void root.offsetWidth;
+    root.querySelectorAll(".mbar .fill").forEach((el,i)=>{
+      // Versatz mitgezogen: bei langsamer wachsenden Balken muss auch der
+      // Abstand zwischen ihnen gr\u00f6\u00dfer werden, sonst verschmilzt die Staffelung.
+      if(animOn) el.style.transitionDelay = (i*55)+"ms";
+      el.style.transform = "scaleY("+(parseFloat(el.getAttribute("data-h"))/100)+")";
+    });
+  }
+
+  // L\u00e4sst Bl\u00f6cke erst dann loslegen, wenn sie tats\u00e4chlich im Bild sind.
+  // Vorher liefen Kurve, Zahlen und Balken schon beim \u00d6ffnen der Statistik ab --
+  // wer nach unten scrollte, sah nur noch das fertige Ergebnis.
+  function revealOnScroll(root){
+    const ziele = [...root.querySelectorAll(".reveal")];
+    const zeigen = (el)=>{
+      el.classList.add("shown");
+      if(el.dataset.job==="tiles") startTileCounts(el);
+      else if(el.dataset.job==="chart") animateChart(el);
+      else if(el.dataset.job==="months") startMonthBars(el);
+    };
+    if(!animOn || !("IntersectionObserver" in window)){ ziele.forEach(zeigen); return; }
+    const beob = new IntersectionObserver((eintraege, o)=>{
+      eintraege.forEach(e=>{
+        if(!e.isIntersecting) return;
+        o.unobserve(e.target);   // jeder Block l\u00e4uft genau einmal
+        zeigen(e.target);
+      });
+    }, { threshold:.25 });
+    ziele.forEach(el=>beob.observe(el));
+  }
+
   function renderStats(content, h){
     const habits = habitsOfYear(currentYear);
     const all = statsScope==="all";
@@ -2205,13 +2254,13 @@
       '<button data-scope="all"'+(all?' class="sel"':"")+'>Alle Habits'+(habits.length>1?" ("+habits.length+")":"")+'</button>'+
       '</div></div>';
 
-    html += '<div class="tiles">'+
+    html += '<div class="tiles reveal" data-job="tiles">'+
       statTile(ICONS.check,  totalDone,  all ? "Insgesamt abgeschlossen" : "Tage erf\u00fcllt", color, 0)+
       statTile(ICONS.trophy, bestStreak, "L\u00e4ngste Serie \u00fcberhaupt", color, 1)+
       statTile(ICONS.flame,  curStreak,  all ? "L\u00e4ngste aktuelle Serie" : "Aktuelle Serie", color, 2)+
       '</div>';
 
-    html += '<div class="card anim-up" style="animation-delay:190ms">'+
+    html += '<div class="card reveal" data-job="chart">'+
       '<div class="card-head"><div>'+
         '<div class="card-title">Verlauf</div>'+
         '<div class="card-sub">Anteil erf\u00fcllter Tage im gleitenden 7-Tage-Fenster \u00b7 \u00d8 '+avg+'%</div>'+
@@ -2222,7 +2271,7 @@
       buildChart(series, color)+
       '</div>';
 
-    html += '<div class="card anim-up" style="animation-delay:270ms">'+
+    html += '<div class="card reveal" data-job="months">'+
       '<div class="card-head"><div>'+
         '<div class="card-title">Monate '+currentYear+'</div>'+
         '<div class="card-sub">Anteil erf\u00fcllter Tage je Monat</div>'+
@@ -2235,26 +2284,52 @@
         '</div>').join("")+
       '</div></div>';
 
-    // ---- Hochrechnung aufs Jahresende ----
-    const fc = forecast(scope);
-    if(fc && fc.rest > 0){
-      const schafft = fc.prognose >= fc.ziel;
+    // ---- Hochrechnung aufs Jahresende (in den Einstellungen abschaltbar) ----
+    const fc = planOn ? forecast(scope) : null;
+    if(fc){
+      const erreicht = fc.bisher >= fc.ziel;
       const pctQ = Math.round(fc.quote*100);
-      html += '<div class="card anim-up" style="animation-delay:330ms">'+
+      // Wie viele der verbleibenden geplanten Tage sind noch n\u00f6tig? Daraus
+      // wird die Angabe "an X von 7 Tagen", die man tats\u00e4chlich umsetzen kann.
+      const noetig = Math.max(0, fc.ziel - fc.bisher);
+      const quoteNoetig = fc.rest > 0 ? noetig/fc.rest : 0;
+      const proWoche = Math.min(7, Math.ceil(quoteNoetig*7));
+      const machbar = fc.rest >= noetig;
+      const vorPlan = quoteNoetig <= fc.quote;
+
+      let kopf, text, farbe;
+      if(erreicht){
+        kopf = fc.bisher;
+        farbe = "var(--good)";
+        text = '<b style="color:var(--good)">Ziel erreicht.</b><br>'+
+               'Du bist '+(fc.bisher-fc.ziel)+' Tage \u00fcber deinem Ziel von '+fc.ziel+'.';
+      }else if(!machbar){
+        kopf = fc.prognose;
+        farbe = "#ff8a8a";
+        text = 'von '+fc.ziel+' zum Jahresende<br>'+
+               '<span style="color:#ff8a8a">Selbst mit jedem verbleibenden Tag nicht mehr erreichbar. '+
+               'Ein angepasstes Ziel w\u00e4re ehrlicher.</span>';
+      }else{
+        kopf = fc.prognose;
+        farbe = vorPlan ? "var(--good)" : color;
+        text = 'von '+fc.ziel+' zum Jahresende<br>'+
+               '<span style="color:'+(vorPlan?"var(--good)":"var(--muted)")+'">'+
+               'Noch '+fc.rest+' geplante Tage, dir fehlen '+noetig+'.<br>'+
+               '<b>Ab jetzt an '+proWoche+' von 7 Tagen</b> \u2014 bisher schaffst du '+
+               (fc.quote*7).toFixed(1).replace(".",",")+'.</span>';
+      }
+
+      html += '<div class="card reveal">'+
         '<div class="card-head"><div>'+
-          '<div class="card-title">Hochrechnung</div>'+
+          '<div class="card-title">'+(erreicht ? "Ziel" : "R\u00fcckw\u00e4rts-Planung")+'</div>'+
           '<div class="card-sub">Aus deiner Quote der letzten 30 Tage ('+pctQ+'%)</div>'+
         '</div></div>'+
         '<div class="fc-row">'+
-          '<div class="fc-big" style="color:'+(schafft?"var(--good)":color)+'">'+fc.prognose+'</div>'+
-          '<div class="fc-txt">von '+fc.ziel+' zum Jahresende<br>'+
-            '<span style="color:'+(schafft?"var(--good)":"var(--muted)")+'">'+
-            (schafft ? "Damit erreichst du dein Ziel." :
-              "Dir fehlen "+(fc.ziel-fc.prognose)+" \u2013 daf\u00fcr br\u00e4uchtest du "+
-              Math.min(100, Math.round((fc.ziel-fc.bisher)/fc.rest*100))+"% statt "+pctQ+"%.")+
-            '</span></div>'+
+          '<div class="fc-big" style="color:'+farbe+'">'+kopf+'</div>'+
+          '<div class="fc-txt">'+text+'</div>'+
         '</div>'+
-        '<div class="fc-bar"><span style="width:'+Math.min(100,Math.round(fc.prognose/fc.ziel*100))+'%;'+gradientStyle(schafft?"#3ecf8e":color)+'"></span></div>'+
+        '<div class="fc-bar"><span style="width:'+Math.min(100,Math.round((erreicht?fc.bisher:fc.prognose)/fc.ziel*100))+'%;'+
+          gradientStyle(erreicht||vorPlan ? "#3ecf8e" : color)+'"></span></div>'+
         '</div>';
     }
 
@@ -2263,7 +2338,7 @@
     const schnitt = ss.length ? ss.reduce((a,x)=>a+x.schnitt,0)/ss.length : 0;
     const maxPause = ss.reduce((a,x)=>Math.max(a,x.maxPause), 0);
     const neustarts = ss.reduce((a,x)=>a+x.neustarts, 0);
-    html += '<div class="card anim-up" style="animation-delay:390ms">'+
+    html += '<div class="card reveal">'+
       '<div class="card-head"><div>'+
         '<div class="card-title">Durchhalteverm\u00f6gen</div>'+
         '<div class="card-sub">Wie stabil du dranbleibst, nicht nur wie viel</div>'+
@@ -2271,7 +2346,6 @@
       '<div class="mini-stats">'+
         miniStat(schnitt.toFixed(1).replace(".",","), "Tage je Serie im Schnitt")+
         miniStat(maxPause, maxPause===1 ? "Tag l\u00e4ngste Pause" : "Tage l\u00e4ngste Pause")+
-        miniStat(neustarts, neustarts===1 ? "Mal neu angefangen" : "Mal neu angefangen")+
       '</div></div>';
 
     // ---- Vergleich aller Habits (nur in der Gesamt\u00fcbersicht sinnvoll) ----
@@ -2280,7 +2354,7 @@
         const d = doneCount(x), z = targetFor(x);
         return { x:x, d:d, z:z, pct: z ? Math.round(d/z*100) : 0 };
       }).sort((a,b)=>b.pct-a.pct);
-      html += '<div class="card anim-up" style="animation-delay:450ms">'+
+      html += '<div class="card reveal">'+
         '<div class="card-head"><div>'+
           '<div class="card-title">Vergleich</div>'+
           '<div class="card-sub">Welcher Habit l\u00e4uft am besten</div>'+
@@ -2301,23 +2375,7 @@
     html += '</div>';
     content.innerHTML = html;
 
-    // Zahlen von 0 hochz\u00e4hlen, leicht versetzt
-    content.querySelectorAll(".tile .val").forEach((el,i)=>{
-      const to = parseInt(el.getAttribute("data-count"), 10) || 0;
-      if(!animOn){ el.textContent = to; return; }
-      el.textContent = "0";
-      setTimeout(()=>animateNumber(el, to), 140 + i*90);
-    });
-    // Monatsbalken nacheinander hochwachsen lassen (Reflow erzwingen, damit der
-    // 0-Zustand als Ausgangswert des \u00dcbergangs z\u00e4hlt)
-    void content.offsetWidth;
-    content.querySelectorAll(".mbar .fill").forEach((el,i)=>{
-      // Versatz mitgezogen: bei langsamer wachsenden Balken muss auch der
-      // Abstand zwischen ihnen gr\u00f6\u00dfer werden, sonst verschmilzt die Staffelung.
-      if(animOn) el.style.transitionDelay = (380 + i*55)+"ms";
-      el.style.transform = "scaleY("+(parseFloat(el.getAttribute("data-h"))/100)+")";
-    });
-    animateChart(content);
+    revealOnScroll(content);
 
     const scopeSw = content.querySelector("#scopeSwitch");
     scopeSw.querySelectorAll("button").forEach(b=>b.addEventListener("click", ()=>{
@@ -2793,11 +2851,17 @@
   });
 
   // ---------- Ansichtswechsel (Mac: Pille oben, Handy: Tab-Leiste unten) ----------
+  // Reihenfolge der Seiten in der unteren Leiste. Daraus ergibt sich die
+  // Richtung des \u00dcbergangs: nach rechts getippt hei\u00dft "von rechts herein".
+  function seitenIndex(){ return !mobileDetail ? 0 : (view==="stats" ? 2 : 1); }
+  function richtungsKlasse(neu, alt){ return neu > alt ? "anim-right" : "anim-left"; }
+
   function setView(v){
     if(v===view) return;
+    const cls = richtungsKlasse(v==="stats" ? 2 : 1, view==="stats" ? 2 : 1);
     view = v;
     localStorage.setItem(VIEW_KEY, view);
-    pendingAnim = { sel:"#content", cls:"anim-up" };
+    pendingAnim = { sel:"#content", cls:cls };
     renderAll();
   }
   document.querySelectorAll("#viewSwitch button").forEach(b=>{
@@ -2806,24 +2870,33 @@
 
   document.querySelectorAll('#tabbar button[data-tab]').forEach(b=>{
     const slot = b.querySelector(".ti");
-    if(slot) slot.innerHTML = TAB_ICONS[b.dataset.tab] || "";
+    const ic = TAB_ICONS[b.dataset.tab];
+    if(slot && ic){
+      slot.innerHTML = (typeof ic === "string")
+        ? ic
+        : '<span class="ic-out">'+ic.out+'</span><span class="ic-fill">'+ic.fill+'</span>';
+    }
     b.addEventListener("click", ()=>{
       const t = b.dataset.tab;
       if(t==="add"){ openModal(null); return; }
       if(t==="settings"){ openSettings(); return; }
+      // Richtung ergibt sich aus der Position in der Leiste: Start(0),
+      // Kalender(1), Statistik(2). Dadurch f\u00fchlt sich der Wechsel r\u00e4umlich an --
+      // man merkt, in welche Richtung man sich bewegt.
+      const neu = (t==="habits") ? 0 : (t==="stats" ? 2 : 1);
+      const alt = seitenIndex();
+      if(neu === alt) return;
+      const cls = richtungsKlasse(neu, alt);
+
       if(t==="habits"){
-        if(mobileDetail) pendingAnim = { sel:".sidebar", cls:"anim-left" };
+        pendingAnim = { sel:".sidebar", cls:cls };
         mobileDetail = false;
-        renderAll();
-        return;
+      }else{
+        pendingAnim = { sel:"#content", cls:cls };
+        view = (t==="stats") ? "stats" : "cal";
+        localStorage.setItem(VIEW_KEY, view);
+        mobileDetail = true;
       }
-      const v = (t==="stats") ? "stats" : "cal";
-      // Aus der Liste heraus gleitet der Inhalt von rechts herein, innerhalb
-      // der Detailansicht wandert er nach oben.
-      pendingAnim = !mobileDetail ? { sel:"#content", cls:"anim-right" } : { sel:"#content", cls:"anim-up" };
-      view = v;
-      localStorage.setItem(VIEW_KEY, view);
-      mobileDetail = true;
       renderAll();
     });
   });
@@ -2851,6 +2924,7 @@
       cp.style.display = "none";
     }
     document.getElementById("animSwitch").setAttribute("aria-checked", animOn ? "true" : "false");
+    document.getElementById("planSwitch").setAttribute("aria-checked", planOn ? "true" : "false");
     document.getElementById("settingsOverlay").classList.add("show");
   }
   function closeSettings(){ document.getElementById("settingsOverlay").classList.remove("show"); }
@@ -2866,6 +2940,13 @@
     document.body.classList.toggle("no-anim", !animOn);
     document.getElementById("animSwitch").setAttribute("aria-checked", animOn ? "true" : "false");
     toast(animOn ? "Animationen eingeschaltet." : "Animationen ausgeschaltet.");
+  });
+  document.getElementById("planSwitch").addEventListener("click", ()=>{
+    planOn = !planOn;
+    localStorage.setItem(PLAN_KEY, planOn ? "1" : "0");
+    document.getElementById("planSwitch").setAttribute("aria-checked", planOn ? "true" : "false");
+    if(view==="stats") renderMain();   // Statistik sofort neu aufbauen
+    toast(planOn ? "R\u00fcckw\u00e4rts-Planung eingeschaltet." : "R\u00fcckw\u00e4rts-Planung ausgeschaltet.");
   });
 
   // Pillen-Hintergrund sitzt an einer per Pixel berechneten Position -- nach
