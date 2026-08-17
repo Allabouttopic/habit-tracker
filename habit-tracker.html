@@ -214,8 +214,8 @@
   @keyframes punktFuellt{from{stroke-dashoffset:31.42}to{stroke-dashoffset:0}}
   /* Begruessung: die Reihe laeuft einmal von links nach rechts voll */
   .trail.fuellen i.t-done .pie{
-    animation:punktFuellt 420ms var(--ease) both;
-    animation-delay:calc(var(--i) * 45ms);
+    animation:punktFuellt 620ms var(--ease) both;
+    animation-delay:calc(var(--i) * 60ms);
   }
   /* Gerade abgehakt: heute fuellt sich sofort, ohne Staffelung -- und der
      Punkt springt dabei kurz auf. Die Fuellung allein geht auf einem Punkt
@@ -226,8 +226,13 @@
     58%{transform:scale(1.14)}
     100%{transform:scale(1)}
   }
-  .trail i.t-heute.frisch{animation:punktPop 640ms var(--ease) both}
-  .trail i.t-heute.frisch .pie{animation:punktFuellt 700ms var(--ease) both}
+  /* Der Sprung bleibt kurz -- er soll das Auge holen, nicht selbst dauern.
+     Die Fuellung darunter laeuft bewusst lang (2 s, am Regler ausgesucht):
+     Auf 14 Pixeln braucht ein Tortenstueck Zeit, sonst ist es ein Blinzeln.
+     Auch hier NICHT --ease -- die Kurve ist zu vorderlastig und haette den
+     Ring nach einem Drittel der Zeit schon zu 85 % geschlossen. */
+  .trail i.t-heute.frisch{animation:punktPop 620ms var(--ease) both}
+  .trail i.t-heute.frisch .pie{animation:punktFuellt 2000ms cubic-bezier(.25,.5,.4,1) both}
   .trail i.t-aus{background:transparent;box-shadow:inset 0 0 0 1.4px #5a6272}
   .trail i.t-leer{background:transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);transform:scale(.62)}
   /* Heute: ein Ring um den rechten Punkt. Bewusst als outline und nicht als
@@ -1106,10 +1111,17 @@
     position:absolute;left:50%;top:50%;width:90px;height:90px;margin:-45px 0 0 -45px;
     border-radius:50%;z-index:1;pointer-events:none;
     transform:scale(0);
-    /* 460 ms statt 1600: Die Welle traegt jetzt den Farbwechsel selbst. Sie
-       darf nicht laenger dauern als der Rest der Leiste braucht, sonst haengt
-       der Knopf sichtbar hinterher. */
-    transition:transform 460ms var(--ease);
+    /* Bewusst NICHT --ease -- dieselbe Falle wie beim Seiten-Geist. Die
+       App-Kurve ist stark vorderlastig: Nach 30 % der Laufzeit waere die Welle
+       schon zu 85 % durch, der Rest kriecht. Man saehe ein Aufblitzen statt
+       eines Aufsteigens. Mit dieser Kurve sind es nach 30 % erst 59 %.
+       1600 ms ist am Regler in animation-vorschau.html ausgesucht: Die Welle
+       soll sichtbar aufsteigen, nicht umspringen.
+       will-change gibt ihr eine eigene Ebene -- beim Wechsel Start -> Loop
+       laeuft gleichzeitig der Seiten-Geist mit einer kompletten DOM-Kopie,
+       und die beiden sollen nicht um Rechenzeit streiten. */
+    transition:transform 1600ms cubic-bezier(.25,.5,.4,1);
+    will-change:transform;
   }
   .fab-fill.rise{transform:scale(1)}
 
@@ -2250,7 +2262,8 @@
       t.classList.add("fuellen");
       // Feste Zeit statt "animationend": Auf der Reihe laufen bis zu vierzehn
       // Animationen, und das erste Ende würde den Rest abschneiden.
-      setTimeout(()=>t.classList.remove("fuellen"), 1300);
+      // 13 * 60 ms Versatz + 620 ms Lauf = knapp 1,4 s -- mit Luft darüber.
+      setTimeout(()=>t.classList.remove("fuellen"), 1900);
     });
   }
 
@@ -4210,8 +4223,9 @@
     welle.addEventListener("transitionend", fertig, { once:true });
     // Sicherheitsnetz: Läuft die Seite im Hintergrund, kommt transitionend
     // unter Umständen nie -- der Knopf dürfte dann nicht in der alten Farbe
-    // hängen bleiben.
-    setTimeout(fertig, 900);
+    // hängen bleiben. Muss ÜBER der Laufzeit der Welle liegen (1600 ms),
+    // sonst schneidet der Zeitgeber sie kurz vor Schluss ab.
+    setTimeout(fertig, 2000);
   }
 
   function updateTabbar(){
