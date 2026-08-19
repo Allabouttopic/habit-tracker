@@ -17,13 +17,25 @@
     --today:#f4f6fb;
     --shadow:0 8px 30px rgba(0,0,0,.35);
     --card-shadow:0 2px 8px rgba(0,0,0,.28);
-    --radius:14px;
+    /* ---------- Rundungen: fuenf Stufen statt sechzehn ----------
+       Vorher lagen 16 verschiedene Werte zwischen 3 und 22 px in der Datei --
+       einzeln sieht das niemand, zusammen ergibt es genau die Unruhe, die man
+       der App ansah. Jede Stufe hat jetzt eine Aufgabe. */
+    --r-xs:4px;     /* Bandkaestchen, Balken, Fortschritt  */
+    --r-s:8px;      /* Chips, kleine Knoepfe, Symbolfelder */
+    --r-m:12px;     /* Karten, Eingabefelder, Kalendertage */
+    --r-l:18px;     /* Blaetter, Menues, grosse Flaechen   */
+    --r-rund:999px; /* Pillen, Punkte, Schalter            */
+    --radius:var(--r-m);
 
     /* Bewegungs-Grundlagen: eine einzige Beschleunigungskurve fuer alles.
        Sie startet zuegig und bremst weich aus, ohne ueber das Ziel hinauszuschiessen
        -- dadurch wirkt jede Bewegung praezise statt verspielt. Alle Zeiten leiten
        sich von --dur ab, so laesst sich das Tempo an einer Stelle nachjustieren. */
     --ease:cubic-bezier(.32,.72,0,1);
+    /* Eine Feder statt dreier fast gleicher: .34,1.4,.5,1 / .34,1.5,.5,1 /
+       .34,1.2,.4,1 standen nebeneinander -- dieselbe Absicht, drei Werte. */
+    --feder:cubic-bezier(.34,1.4,.5,1);
     --dur:350ms;
     --dur-fast:200ms;
     --dur-slow:520ms;
@@ -54,7 +66,7 @@
   *{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
   ::-webkit-scrollbar{width:10px;height:10px}
   ::-webkit-scrollbar-track{background:transparent}
-  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px;border:2px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:var(--r-xs);border:2px solid transparent;background-clip:padding-box}
   ::-webkit-scrollbar-thumb:hover{background:#3a4152;background-clip:padding-box}
 
   /* Sidebar */
@@ -85,10 +97,15 @@
     width:100%;display:flex;align-items:center;gap:9px;text-align:left;
     padding:13px 20px;border:none;border-bottom:1px solid var(--line);
     background:none;color:var(--text);cursor:pointer;
-    transition:background-color var(--dur-fast) var(--ease);
+    /* Laenger als --dur-fast und mit der Schriftfarbe zusammen: Der Wechsel in
+       den Schnellmodus ist ein Zustandswechsel, kein Hover -- er darf Zeit
+       haben, sonst wirkt er hart. */
+    transition:background-color var(--dur) var(--ease),
+               color var(--dur) var(--ease),
+               border-color var(--dur) var(--ease);
   }
-  .heute-zeile:hover{background:color-mix(in srgb, var(--accent) 7%, transparent)}
-  .heute-zeile:active{background:color-mix(in srgb, var(--accent) 12%, transparent)}
+  .heute-zeile:hover{background:color-mix(in srgb, var(--sess, var(--accent)) 8%, transparent)}
+  .heute-zeile:active{background:color-mix(in srgb, var(--sess, var(--accent)) 14%, transparent)}
   .heute-wort{font-size:14px;font-weight:700;flex:none}
   .heute-stand{
     color:var(--muted);font-size:12.5px;font-weight:600;flex:1;min-width:0;
@@ -102,9 +119,20 @@
   /* Steht nichts an, gibt es auch nichts abzuhaken */
   .heute-zeile.leer{cursor:default;opacity:.55;pointer-events:none}
   .heute-zeile.leer .heute-pfeil{display:none}
-  body.quick .heute-zeile{background:var(--accent);color:#fff}
+  body.quick .heute-zeile{
+    background:var(--sess, var(--accent));color:var(--sessfg,#fff);
+    border-bottom-color:transparent;
+  }
+  body.quick .heute-zeile .heute-wort,
   body.quick .heute-zeile .heute-stand,
-  body.quick .heute-zeile .heute-pfeil{color:rgba(255,255,255,.85)}
+  body.quick .heute-zeile .heute-pfeil{color:inherit;opacity:.92}
+  /* Auch der Uebernehmen-Knopf traegt die Sitzungsfarbe -- sonst stuende ein
+     blauer Knopf in einer gruenen Leiste. */
+  body.quick .quick-bar .btn.primary{
+    background:var(--sess, var(--accent));border-color:var(--sess, var(--accent));
+    color:var(--sessfg,#fff);
+    box-shadow:0 2px 10px color-mix(in srgb, var(--sess, var(--accent)) 35%, transparent);
+  }
 
   /* Auswahlkreis rechts auf der Karte -- nur im Schnellmodus sichtbar */
   .habit-pick{
@@ -115,7 +143,12 @@
     transition:opacity var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease),
                background-color var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease);
   }
-  body.quick .habit-pick{opacity:1;transform:translateY(-50%) scale(1)}
+  body.quick .habit-pick{
+    opacity:1;transform:translateY(-50%) scale(1);
+    /* Versetzt: Die Kreise laufen von oben nach unten ein, statt gleichzeitig
+       aufzuploppen. --pd wird beim Zeichnen je Karte gesetzt. */
+    transition-delay:var(--pd,0ms);
+  }
   .habit-pick svg{width:17px;height:17px;opacity:0;transition:opacity var(--dur-fast) var(--ease);color:#fff}
   .habit-card.picked .habit-pick{background:var(--hc);border-color:var(--hc)}
   .habit-card.picked .habit-pick svg{opacity:1}
@@ -129,11 +162,30 @@
      unter seine Inhaltsbreite (min-width hat den Vorgabewert auto). Es blieb
      also stur breit und drückte "Übernehmen" seitlich aus der Leiste heraus,
      sichtbar über den Kalender. Zwei Zeilen passen bei jeder Breite. */
+  /* Die Leiste faehrt heraus, statt zu erscheinen. "display" laesst sich nicht
+     ueberblenden -- deshalb steht sie immer im Layout und wird ueber Hoehe,
+     Deckkraft und einen kleinen Versatz auf- und zugeklappt. grid mit
+     "1fr / 0fr" ist der einzige Weg, eine UNBEKANNTE Hoehe zu animieren, ohne
+     sie vorher messen zu muessen. */
   .quick-bar{
-    display:none;flex-direction:column;align-items:stretch;gap:8px;padding:10px 12px;
-    border-top:1px solid var(--line);background:var(--panel);
+    display:grid;grid-template-rows:0fr;
+    border-top:1px solid transparent;background:var(--panel);
+    opacity:0;overflow:hidden;
+    transition:grid-template-rows var(--dur) var(--ease),
+               opacity var(--dur-fast) var(--ease),
+               border-color var(--dur) var(--ease);
   }
-  body.quick .quick-bar{display:flex}
+  .quick-bar > .quick-innen{
+    min-height:0;overflow:hidden;
+    display:flex;flex-direction:column;align-items:stretch;gap:8px;
+    padding:0 12px;
+    transform:translateY(-6px);
+    transition:transform var(--dur) var(--ease),padding var(--dur) var(--ease);
+  }
+  body.quick .quick-bar{
+    grid-template-rows:1fr;opacity:1;border-top-color:var(--line);
+  }
+  body.quick .quick-bar > .quick-innen{transform:none;padding:10px 12px}
   .quick-bar #quickCount{
     color:var(--muted);font-size:12.5px;font-weight:700;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
@@ -151,7 +203,7 @@
   .habit-card{
     background:var(--panel-2);
     border:1px solid var(--line);
-    border-radius:12px;padding:12px 12px;margin-bottom:10px;cursor:pointer;
+    border-radius:var(--r-m);padding:12px 12px;margin-bottom:10px;cursor:pointer;
     transition:border-color .15s,transform .05s,box-shadow .15s;position:relative;
     box-shadow:var(--card-shadow);
   }
@@ -267,7 +319,7 @@
   }
   .habit-card.neu{animation:loopNeu 620ms var(--ease) both}
   .habit-card.neu::after{
-    content:"";position:absolute;inset:-2px;border-radius:15px;pointer-events:none;z-index:2;
+    content:"";position:absolute;inset:-2px;border-radius:calc(var(--r-m) + 2px);pointer-events:none;z-index:2;
     border:2px solid var(--hc, var(--accent));
     animation:loopRing 820ms var(--ease) both;
   }
@@ -283,7 +335,7 @@
   .dot{width:12px;height:12px;border-radius:50%;flex:none}
   .habit-name{font-weight:600;font-size:14.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .habit-count{color:var(--muted);font-size:12px;margin-top:8px;font-variant-numeric:tabular-nums}
-  .bar{height:7px;border-radius:5px;background:#0c0e12;margin-top:6px;overflow:hidden}
+  .bar{height:7px;border-radius:var(--r-xs);background:#0c0e12;margin-top:6px;overflow:hidden}
   /* Fortschrittsbalken wachsen ueber transform statt ueber width. Eine Breiten-
      aenderung zwingt den Browser in jedem Bild zu einer neuen Layout-Berechnung;
      eine Skalierung uebernimmt die Grafikkarte. Die Rundung kommt vom Rahmen
@@ -293,7 +345,7 @@
   .sidebar-foot{padding:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
   .btn{
     border:1px solid var(--line);background:var(--panel-2);color:var(--text);
-    padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:600;
+    padding:10px 12px;border-radius:var(--r-m);font-size:13.5px;font-weight:600;
     display:flex;align-items:center;justify-content:center;gap:7px;
     box-shadow:var(--card-shadow);
     transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease,filter .12s ease;
@@ -319,7 +371,7 @@
   .spacer{flex:1}
   .year-nav{display:flex;align-items:center;gap:6px}
   .year-nav button{
-    width:34px;height:34px;border-radius:9px;border:1px solid var(--line);
+    width:34px;height:34px;border-radius:var(--r-s);border:1px solid var(--line);
     background:var(--panel-2);color:var(--text);font-size:16px;line-height:1;
     transition:transform .12s ease,border-color .12s ease;
   }
@@ -352,11 +404,11 @@
     margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap;
     font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;
   }
-  .goal-bar{height:8px;border-radius:5px;background:var(--panel-2);margin-top:9px;overflow:hidden;border:1px solid var(--line)}
+  .goal-bar{height:8px;border-radius:var(--r-xs);background:var(--panel-2);margin-top:9px;overflow:hidden;border:1px solid var(--line)}
   .goal-bar > span{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);transition:transform var(--dur-slow) var(--ease)}
   .streak-badge{
     display:inline-flex;align-items:center;gap:4px;background:var(--panel-2);
-    border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:700;
+    border:1px solid var(--line);border-radius:var(--r-rund);padding:3px 10px;font-size:12.5px;font-weight:700;
     font-variant-numeric:tabular-nums;white-space:nowrap;
   }
   .streak-mini{color:var(--muted);font-weight:700;margin-left:6px;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;gap:4px}
@@ -380,7 +432,7 @@
   .fl-g{
     transform-box:view-box;transform-origin:12px 20.5px;
     transform:scale(var(--fl-scale,1));
-    transition:transform 620ms cubic-bezier(.34,1.4,.5,1);
+    transition:transform 620ms var(--feder);
   }
   .flame path,.flame ellipse{transition:fill 700ms var(--ease),opacity 700ms var(--ease)}
   .fl-mantle{fill:var(--fl-1)}
@@ -411,7 +463,7 @@
   }
   .flame.levelup::after{animation:ringOut 780ms var(--ease) both}
   @keyframes flamePop{ 0%{transform:scale(1)} 38%{transform:scale(1.4)} 100%{transform:scale(1)} }
-  .flame.levelup{animation:flamePop 900ms cubic-bezier(.34,1.5,.5,1)}
+  .flame.levelup{animation:flamePop 900ms var(--feder)}
 
   /* ---------- Kalender ----------
      Kein waagerechtes Scrollen mehr: Die Monatsansicht hat feste sieben Spalten,
@@ -440,7 +492,7 @@
      hier gerade nicht abgehakt wird. */
   .skip-btn{
     margin-left:auto;padding:6px 12px;font-size:12px;font-weight:700;
-    border-radius:999px;border:1px solid var(--line);background:var(--panel-2);
+    border-radius:var(--r-rund);border:1px solid var(--line);background:var(--panel-2);
     color:var(--muted);white-space:nowrap;
     transition:border-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease);
   }
@@ -450,7 +502,7 @@
 
   .skip-panel{
     display:none;flex-direction:column;gap:10px;margin-bottom:14px;
-    padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--panel);
+    padding:12px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--panel);
   }
   body.skipmode .skip-panel{display:flex}
   .skip-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -496,6 +548,34 @@
   /* --bcw ist die per JavaScript berechnete Kantenlaenge eines Kaestchens.
      Zeilen und Spalten benutzen denselben Wert, dadurch bleiben die Kaestchen
      quadratisch, ohne dass aspect-ratio im Scrollbereich noetig waere. */
+  /* Kopfzeile des Bandes: links "Verlauf", rechts der angetippte Tag. */
+  .band-kopf{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;min-width:0}
+  .band-tag{
+    margin-left:auto;color:var(--muted);font-size:12px;font-weight:600;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    opacity:0;transition:opacity var(--dur-fast) var(--ease);
+  }
+  .band-tag.an{opacity:1;animation:bandTagRein 320ms var(--ease) both}
+  @keyframes bandTagRein{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+  /* Das angetippte Kaestchen bleibt markiert -- sonst weiss man nach dem
+     Sprung in den Monat nicht mehr, worauf man getippt hat. */
+  .bcell.gewaehlt{outline:1.6px solid var(--text);outline-offset:1.5px;border-radius:var(--r-xs)}
+
+  /* Wassertropfen: Die Welle laeuft vom abgehakten Tag durch das Jahresband.
+     Nachgebildet ist die gedaempfte Halbwelle aus der Vorschau -- schneller
+     Anstieg, weiches Zurueckfallen und ein winziges Nachschwingen unter die
+     Ruhelage. --ta traegt den Hub, --tv die Verzoegerung, beide je Kaestchen
+     aus dem Abstand zur Quelle gerechnet. */
+  @keyframes bandTropfen{
+    0%  {transform:translateY(0)}
+    33% {transform:translateY(var(--ta,0px))}
+    68% {transform:translateY(calc(var(--ta,0px) * -0.16))}
+    100%{transform:translateY(0)}
+  }
+  .bcell.tropfen{
+    animation:bandTropfen 530ms cubic-bezier(.25,.5,.4,1) var(--tv,0ms) both;
+    will-change:transform;
+  }
   .band-box{display:flex;gap:8px;align-items:flex-start;max-width:560px}
   .band-wd{
     display:grid;grid-template-rows:repeat(7,var(--bcw,15px));gap:3px;margin-top:18px;
@@ -524,7 +604,7 @@
     grid-auto-rows:var(--bcw,15px);gap:3px;
   }
   .bcell{
-    border-radius:3px;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:var(--r-xs);background:var(--panel-2);border:1px solid var(--line);
     box-shadow:inset 0 1px 2px rgba(0,0,0,.32);padding:0;cursor:pointer;
     transition:transform .06s, background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
   }
@@ -554,7 +634,7 @@
   .cal-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
   .cal-title{flex:1;text-align:center;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
   .cal-nav{
-    width:36px;height:36px;min-width:36px;border-radius:11px;border:1px solid var(--line);
+    width:36px;height:36px;min-width:36px;border-radius:var(--r-s);border:1px solid var(--line);
     background:var(--panel-2);color:var(--text);font-size:17px;line-height:1;padding:0;
     transition:transform var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease);
   }
@@ -565,7 +645,7 @@
   .month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
   .wd{text-align:center;color:var(--muted);font-size:11.5px;font-weight:700;padding-bottom:3px}
   .mcell{
-    aspect-ratio:1;border-radius:14px;border:1px solid var(--line);background:var(--panel-2);
+    aspect-ratio:1;border-radius:var(--r-m);border:1px solid var(--line);background:var(--panel-2);
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
     color:var(--text);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;padding:0;
     box-shadow:inset 0 1px 3px rgba(0,0,0,.3);cursor:pointer;
@@ -593,7 +673,7 @@
   .ymonth h4{margin:0 0 8px;font-size:12.5px;font-weight:700;text-align:center}
   .ygrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
   .ycell{
-    aspect-ratio:1;border-radius:4px;display:flex;align-items:center;justify-content:center;
+    aspect-ratio:1;border-radius:var(--r-xs);display:flex;align-items:center;justify-content:center;
     font-size:9.5px;color:var(--muted);font-variant-numeric:tabular-nums;
   }
   .ycell.day{background:var(--panel-2);border:1px solid var(--line)}
@@ -615,7 +695,7 @@
   }
   .overlay.show{opacity:1;visibility:visible;pointer-events:auto}
   .modal{
-    background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--shadow);
     width:100%;max-width:376px;padding:18px;max-height:calc(100vh - 40px);overflow:auto;
     transform:scale(.96) translateY(8px);
     transition:transform var(--dur) var(--ease);
@@ -625,13 +705,13 @@
   .field{margin-bottom:11px}
   .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:600}
   .field input[type=text], .field input[type=number], .field select{
-    width:100%;padding:9px 11px;border-radius:10px;border:1px solid var(--line);
+    width:100%;padding:9px 11px;border-radius:var(--r-m);border:1px solid var(--line);
     background:var(--panel-2);color:var(--text);font-size:14px;
     transition:border-color .18s ease,box-shadow .18s ease;
   }
   .field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,140,255,.18)}
   .goal-mode{display:flex;gap:8px;margin-bottom:9px}
-  .goal-mode button{flex:1;padding:8px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);color:var(--muted);font-weight:600;font-size:12.5px;transition:border-color .18s,color .18s}
+  .goal-mode button{flex:1;padding:8px;border-radius:var(--r-s);border:1px solid var(--line);background:var(--panel-2);color:var(--muted);font-weight:600;font-size:12.5px;transition:border-color .18s,color .18s}
   .goal-mode button.sel{border-color:var(--accent);color:var(--text)}
   .swatches{display:flex;gap:7px;flex-wrap:wrap}
   .swatches button{width:28px;height:28px;border-radius:50%;border:2px solid transparent;transition:transform var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease)}
@@ -652,7 +732,7 @@
   }
   .icon-picker button{
     aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:0;
-    border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--muted);
+    border-radius:var(--r-s);border:1px solid var(--line);background:var(--panel-2);color:var(--muted);
     transition:border-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease);
   }
   .icon-picker button{color:var(--muted)}
@@ -663,7 +743,7 @@
 
   /* Symbol in der Habit-Liste, an der Stelle des farbigen Punktes */
   .habit-icon{
-    width:26px;height:26px;min-width:26px;border-radius:9px;flex:none;
+    width:26px;height:26px;min-width:26px;border-radius:var(--r-s);flex:none;
     display:flex;align-items:center;justify-content:center;
     background:color-mix(in srgb, currentColor 18%, transparent);
     border:1px solid color-mix(in srgb, currentColor 32%, transparent);
@@ -681,7 +761,7 @@
   .chips-all{background:none;border:none;color:var(--accent);font-size:11.5px;font-weight:700;padding:0}
   .chips{display:flex;flex-wrap:wrap;gap:5px}
   .chips button{
-    min-width:36px;padding:6px 7px;border-radius:9px;border:1px solid var(--line);
+    min-width:36px;padding:6px 7px;border-radius:var(--r-s);border:1px solid var(--line);
     background:var(--panel-2);color:var(--muted);font-size:11.5px;font-weight:700;
     transition:border-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease);
   }
@@ -699,7 +779,7 @@
      Vier abgesetzte Bloecke statt einer durchgehenden Spalte. Dasselbe Muster
      sollen spaeter die Einstellungen uebernehmen. */
   .abschnitt{
-    border:1px solid var(--line);border-radius:14px;padding:12px 12px 10px;margin-bottom:11px;
+    border:1px solid var(--line);border-radius:var(--r-m);padding:12px 12px 10px;margin-bottom:11px;
     background:color-mix(in srgb, var(--panel-2) 55%, transparent);
   }
   .abs-kopf{
@@ -714,7 +794,7 @@
      Zeichnen auf die gewaehlte Farbe gesetzt, deshalb faerben sich Kachel,
      Verlauf und Balken mit -- ohne dass irgendwo eine Farbe doppelt steht. */
   .vorschau{
-    display:flex;align-items:center;gap:12px;padding:13px;border-radius:14px;margin-bottom:13px;
+    display:flex;align-items:center;gap:12px;padding:13px;border-radius:var(--r-m);margin-bottom:13px;
     background:var(--panel-2);border:1px solid var(--line);position:relative;overflow:hidden;
   }
   /* z-index:0 und darueber liegende Kinder -- dieselbe Falle wie bei der
@@ -727,7 +807,7 @@
   }
   .vorschau > *{position:relative;z-index:1}
   .v-icon{
-    width:42px;height:42px;border-radius:13px;flex:none;color:var(--hc, var(--accent));
+    width:42px;height:42px;border-radius:var(--r-m);flex:none;color:var(--hc, var(--accent));
     display:flex;align-items:center;justify-content:center;
     background:color-mix(in srgb, currentColor 18%, transparent);
     border:1px solid color-mix(in srgb, currentColor 32%, transparent);
@@ -741,12 +821,12 @@
   .v-txt{flex:1;min-width:0;display:block}
   .v-name{display:block;font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .v-sub{display:block;color:var(--muted);font-size:12px;margin-top:3px;font-variant-numeric:tabular-nums}
-  .v-bar{display:block;height:7px;border-radius:5px;background:#0c0e12;margin-top:7px;overflow:hidden}
+  .v-bar{display:block;height:7px;border-radius:var(--r-xs);background:#0c0e12;margin-top:7px;overflow:hidden}
   .v-bar > span{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);transition:transform var(--dur-slow) var(--ease)}
 
   /* ---------- Menue: aufklappbarer Zeitraum ---------- */
   .klapp{
-    border:1px solid var(--line);border-radius:14px;margin-bottom:11px;
+    border:1px solid var(--line);border-radius:var(--r-m);margin-bottom:11px;
     background:color-mix(in srgb, var(--panel-2) 55%, transparent);
   }
   .klapp > summary{
@@ -786,7 +866,7 @@
   #toast{
     position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
     background:var(--panel-2);border:1px solid var(--line);color:var(--text);
-    padding:11px 18px;border-radius:11px;font-size:13.5px;font-weight:600;
+    padding:11px 18px;border-radius:var(--r-m);font-size:13.5px;font-weight:600;
     box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:100;
     max-width:80vw;text-align:center;
   }
@@ -809,14 +889,14 @@
 
   .splash-stage{width:250px}
   .splash-bar{
-    position:relative;height:8px;border-radius:4px;background:var(--panel-2);
+    position:relative;height:8px;border-radius:var(--r-xs);background:var(--panel-2);
     margin-bottom:18px;
   }
   /* --spl traegt die Farbe des ausgelosten Loops. Sie wird beim Start EINMAL
      auf das Startbild gesetzt und faerbt Balken, Kacheln und Haken zugleich --
      dadurch ist der Wechsel schon vor dem Betreten der App zu sehen. */
   .splash-bar > i{
-    position:absolute;inset:0;display:block;border-radius:4px;
+    position:absolute;inset:0;display:block;border-radius:var(--r-xs);
     background:var(--spl, var(--accent));
     transform-origin:left;transform:scaleX(0);
   }
@@ -837,18 +917,18 @@
      Position des aktiven Knopfes gesetzt und gleitet dorthin, statt hart umzuspringen. */
   .seg{
     display:inline-flex;position:relative;padding:3px;gap:2px;
-    background:var(--panel-2);border:1px solid var(--line);border-radius:999px;
+    background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-rund);
     box-shadow:inset 0 1px 3px rgba(0,0,0,.3);
   }
   .seg button{
     position:relative;z-index:1;border:none;background:transparent;color:var(--muted);
-    font-weight:600;font-size:13px;padding:7px 15px;border-radius:999px;white-space:nowrap;
+    font-weight:600;font-size:13px;padding:7px 15px;border-radius:var(--r-rund);white-space:nowrap;
     transition:color .22s ease;
   }
   .seg button.sel{color:var(--text)}
   .seg button:hover{color:var(--text)}
   .seg-thumb{
-    position:absolute;top:3px;left:0;height:calc(100% - 6px);width:0;border-radius:999px;
+    position:absolute;top:3px;left:0;height:calc(100% - 6px);width:0;border-radius:var(--r-rund);
     background:var(--panel);border:1px solid var(--line);box-shadow:var(--card-shadow);z-index:0;
     transition:transform var(--dur) var(--ease), width var(--dur) var(--ease);
   }
@@ -864,7 +944,7 @@
     padding:18px 12px 16px;text-align:center;box-shadow:var(--card-shadow);
   }
   .tile .ic{
-    width:38px;height:38px;margin:0 auto 10px;border-radius:12px;
+    width:38px;height:38px;margin:0 auto 10px;border-radius:var(--r-s);
     display:flex;align-items:center;justify-content:center;
     background:color-mix(in srgb, var(--tint) 20%, transparent);
     border:1px solid color-mix(in srgb, var(--tint) 35%, transparent);
@@ -900,10 +980,13 @@
      blieb je nach Textlaenge ein leeres Feld uebrig. */
   .fc-row{display:flex;align-items:center;justify-content:center;gap:16px;text-align:left}
   .fc-row .fc-txt{flex:0 1 auto;max-width:30ch}
-  .fc-big{font-size:36px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  /* Traegt bei der Verinnerlichung ein WORT statt einer Zahl (Sitzt, Wackelt,
+     Stockt, Waechst). Deshalb umbrechbar und etwas kleiner, sobald es lang ist. */
+  .fc-big{font-size:36px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .fc-big.wort{font-size:29px;letter-spacing:-.01em}
   .fc-txt{color:var(--muted);font-size:12.5px;line-height:1.5}
-  .fc-bar{height:8px;border-radius:5px;background:#0c0e12;margin-top:13px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
-  .fc-bar > span{display:block;height:100%;border-radius:5px}
+  .fc-bar{height:8px;border-radius:var(--r-xs);background:#0c0e12;margin-top:13px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
+  .fc-bar > span{display:block;height:100%;border-radius:var(--r-xs)}
 
   /* ---------- Erklärungen ----------
      Ein kleines "i" neben der Überschrift klappt einen Erklärtext auf.
@@ -920,7 +1003,7 @@
   }
   .info-btn:hover{color:var(--text);border-color:var(--muted)}
   .card.info-offen .info-btn{background:var(--muted);border-color:var(--muted);color:var(--bg)}
-  .info-text{display:none;margin-top:12px;padding:11px 13px;border-radius:11px;
+  .info-text{display:none;margin-top:12px;padding:11px 13px;border-radius:var(--r-m);
     background:var(--panel-2);border:1px solid var(--line);
     color:var(--muted);font-size:12.5px;line-height:1.55}
   .card.info-offen .info-text{display:block;animation:viewIn var(--dur) var(--ease) both}
@@ -943,8 +1026,8 @@
   .yc-bars{margin-top:14px;display:flex;flex-direction:column;gap:7px}
   .yc-row{display:flex;align-items:center;gap:9px}
   .yc-yr{color:var(--muted);font-size:11.5px;font-weight:700;min-width:34px;font-variant-numeric:tabular-nums}
-  .yc-track{flex:1;height:9px;border-radius:5px;background:#0c0e12;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
-  .yc-track > span{display:block;height:100%;border-radius:5px;background:#5a6272}
+  .yc-track{flex:1;height:9px;border-radius:var(--r-xs);background:#0c0e12;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
+  .yc-track > span{display:block;height:100%;border-radius:var(--r-xs);background:#5a6272}
   .yc-pct{color:var(--muted);font-size:12px;font-weight:700;min-width:36px;text-align:right;font-variant-numeric:tabular-nums}
   .yc-row.vor .yc-track{height:7px}
   .yc-row.vor .yc-yr,.yc-row.vor .yc-pct{opacity:.72}
@@ -954,9 +1037,9 @@
   .yc-name{font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .yc-delta{font-size:12.5px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
   .yc-mini{margin-top:7px;display:flex;flex-direction:column;gap:3px}
-  .yc-m{height:7px;border-radius:4px;background:#0c0e12;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
+  .yc-m{height:7px;border-radius:var(--r-xs);background:#0c0e12;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
   .yc-m.vor{height:5px}
-  .yc-m > i{display:block;height:100%;border-radius:4px;background:#5a6272}
+  .yc-m > i{display:block;height:100%;border-radius:var(--r-xs);background:#5a6272}
   .yc-flag{color:var(--muted);font-size:11px;margin-top:6px;font-style:italic}
 
   /* ---------- Abschnitte in der Statistik ----------
@@ -977,14 +1060,71 @@
   .rank-row{display:flex;align-items:center;gap:9px;min-width:0}
   .rank-no{color:var(--muted);font-size:11.5px;font-weight:700;min-width:14px;font-variant-numeric:tabular-nums}
   .rank-name{font-size:13px;font-weight:600;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:38%}
-  .rank-bar{flex:1;height:7px;border-radius:5px;background:#0c0e12;overflow:hidden;min-width:40px;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
-  .rank-bar > span{display:block;height:100%;border-radius:5px}
+  .rank-bar{flex:1;height:7px;border-radius:var(--r-xs);background:#0c0e12;overflow:hidden;min-width:40px;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
+  .rank-bar > span{display:block;height:100%;border-radius:var(--r-xs)}
   .rank-pct{color:var(--muted);font-size:12px;font-weight:700;min-width:34px;text-align:right;font-variant-numeric:tabular-nums}
 
   /* Monatsbalken */
   .mbars{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;align-items:end;height:158px}
+  /* Wochentage: sieben statt zwoelf Spalten, dadurch breitere Balken. */
+  .mbars.wochen{grid-template-columns:repeat(7,1fr);height:140px;gap:8px}
+  /* Ein Tag ohne einen einzigen geplanten Termin -- da gibt es nichts zu
+     bewerten, also auch keinen Balken, nur einen angedeuteten Kasten. */
+  .mbar.leer .track{background:transparent;box-shadow:none;border:1px dashed var(--line)}
+  .mbar.leer .pctv,.mbar.leer .cap{opacity:.45}
+  /* Der beste Tag bekommt seine Zahl dauerhaft, nicht erst beim Ueberfahren. */
+  /* Bei zwoelf Monatsbalken waeren zwoelf Zahlen zu viel -- dort erscheinen sie
+     beim Ueberfahren. Bei sieben Wochentagen ist Platz, und am Handy gibt es
+     gar kein Ueberfahren: Dort stuenden die Zahlen sonst nie. */
+  .mbars.wochen .pctv{opacity:1}
+  .mbar.spitze .pctv{opacity:1;color:var(--text);font-weight:800}
+
+  /* ---------- Serien im Jahresverlauf ----------
+     Eine Zeitachse ueber das ganze Jahr. Die Riegel sind absolut positioniert,
+     ihre Lage kommt in Prozent aus dem Tag im Jahr -- dadurch stimmt sie bei
+     jeder Breite, ohne dass irgendwo gemessen werden muss. */
+  .sl-box{margin-top:4px}
+  .sl-zeile{gap:var(--sl-luecke)}
+  .sl-zeile{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+  /* Breite der Namensspalte an EINER Stelle -- Spur und Achse muessen exakt
+     gleich weit eingerueckt sein, sonst zeigt die Beschriftung auf den
+     falschen Monat. Genau das war vorher der Fall. */
+  .sl-box{--sl-namen:84px;--sl-luecke:10px}
+  .sl-name{
+    flex:0 0 var(--sl-namen);font-size:11.5px;font-weight:700;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .sl-spur{
+    position:relative;flex:1;min-width:0;border-radius:var(--r-xs);
+    background:#0c0e12;box-shadow:inset 0 1px 2px rgba(0,0,0,.4);overflow:hidden;
+  }
+  .sl-lauf{
+    position:absolute;top:2px;bottom:2px;border-radius:var(--r-xs);
+    min-width:2px;
+  }
+  /* Die laengste Serie des Jahres bekommt einen hellen Saum -- sie ist die
+     Antwort auf "wie weit habe ich es schon einmal getragen". */
+  .sl-lauf.top{box-shadow:0 0 0 1.5px rgba(255,255,255,.55)}
+  .sl-heute{
+    position:absolute;top:0;bottom:0;width:1.5px;background:rgba(255,255,255,.5);
+    pointer-events:none;
+  }
+  /* Feine Monatsgrenzen in der Spur: Ohne sie muss man jeden Riegel gegen die
+     Beschriftung darunter abschaetzen. Sie liegen UNTER den Riegeln. */
+  .sl-linie{
+    position:absolute;top:0;bottom:0;width:1px;
+    background:rgba(255,255,255,.07);pointer-events:none;
+  }
+  /* Die Beschriftung sitzt absolut auf demselben Anteil wie die Linien --
+     kein Raster aus zwoelf gleichen Spalten, denn Monate sind ungleich lang. */
+  .sl-achse{
+    position:relative;height:14px;margin-top:7px;
+    color:var(--muted);font-size:10px;font-weight:600;
+  }
+  .sl-achse.eingerueckt{margin-left:calc(var(--sl-namen) + var(--sl-luecke))}
+  .sl-achse span{position:absolute;top:0;transform:translateX(-1px)}
   .mbar{display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:7px;min-width:0}
-  .mbar .track{flex:1;display:flex;align-items:flex-end;border-radius:7px;background:#0c0e12;box-shadow:inset 0 1px 3px rgba(0,0,0,.4);overflow:hidden}
+  .mbar .track{flex:1;display:flex;align-items:flex-end;border-radius:var(--r-xs);background:#0c0e12;box-shadow:inset 0 1px 3px rgba(0,0,0,.4);overflow:hidden}
   .mbar .fill{width:100%;height:100%;transform-origin:bottom;transform:scaleY(0);transition:transform var(--dur-stat) var(--ease)}
   .mbar .cap{text-align:center;color:var(--muted);font-size:10.5px;font-weight:600}
   .mbar .pctv{text-align:center;color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums;opacity:0;transition:opacity .3s}
@@ -1090,7 +1230,7 @@
      uebernommen. Feste Werte lagen daneben, sobald sich Innenabstand oder
      Schriftgroesse der Leiste aenderten. */
   .tab-thumb{
-    position:absolute;top:0;left:0;width:0;height:0;border-radius:15px;z-index:0;
+    position:absolute;top:0;left:0;width:0;height:0;border-radius:var(--r-m);z-index:0;
     background:color-mix(in srgb, var(--barc, var(--accent)) 14%, transparent);
     border:1px solid color-mix(in srgb, var(--barc, var(--accent)) 24%, transparent);
     transition:transform var(--dur) var(--ease), width var(--dur) var(--ease), opacity var(--dur-fast) var(--ease);
@@ -1104,10 +1244,24 @@
   .tabbar .fab{
     flex:0 0 20%;padding:0;background:none;box-shadow:none;border-radius:0;
     align-items:center;justify-content:center;
+    /* drop-shadow statt box-shadow: Es folgt der beschnittenen Form, waehrend
+       ein box-shadow das Rechteck des Kastens nachzeichnen wuerde. */
+    filter:drop-shadow(0 7px 14px color-mix(in srgb, var(--fabc, var(--accent)) 42%, transparent));
+    transition:filter var(--dur) var(--ease);
   }
+  /* ---------- Superellipse ----------
+     Die Form, die iOS fuer Symbole benutzt: Die Kruemmung laeuft an den Ecken
+     weich aus, statt in einen Kreisbogen zu kippen. Mit border-radius ist das
+     nicht erreichbar -- deshalb ein Pfad. Die Koordinaten sind absolut in
+     Pixeln und gelten fuer genau 58x58; die Groesse des Knopfes darf sich also
+     nicht aendern, ohne dass der Pfad mitgeht.
+     ACHTUNG: clip-path schneidet auch den Schein weg -- Schatten gehoeren zur
+     Darstellung des Elements. Der Schein sitzt deshalb als drop-shadow am
+     ELTERNelement, wo er der beschnittenen Silhouette folgt. */
   .fab-in{
     position:relative;overflow:hidden;
-    width:58px;height:58px;border-radius:20px;transform:translateY(-13px);
+    width:58px;height:58px;transform:translateY(-13px);
+    clip-path:path("M29,0 C45.675,0 58,12.325 58,29 C58,45.675 45.675,58 29,58 C12.325,58 0,45.675 0,29 C0,12.325 12.325,0 29,0 Z");
     /* --fabc statt --barc: Die Flaeche des Knopfes wird erst umgestellt, wenn
        die Welle sie bedeckt (siehe fillFab). Ein CSS-Uebergang auf einer
        benutzerdefinierten Eigenschaft laeuft nicht ueberall -- in Safari
@@ -1117,7 +1271,7 @@
     /* Schein in derselben Farbe wie die Flaeche (--fabc), nicht wie die Leiste
        (--barc): Sonst leuchtet der Knopf schon in der neuen Farbe, waehrend
        seine Flaeche noch die alte zeigt. */
-    box-shadow:0 8px 22px color-mix(in srgb, var(--fabc, var(--accent)) 45%, transparent);
+    box-shadow:none;
     /* background-color steht hier BEWUSST NICHT mehr drin. Die Flaeche wird
        erst umgestellt, wenn die Welle sie bedeckt -- lief darauf zusaetzlich
        ein Uebergang, blendete die Farbe nach dem Wellenende ein zweites Mal
@@ -1152,10 +1306,10 @@
   .fab-fill.rise{transform:scale(1)}
 
   /* ---------- Einstellungen ---------- */
-  .icon-btn{width:38px;min-width:38px;height:38px;padding:0;border-radius:11px}
+  .icon-btn{width:38px;min-width:38px;height:38px;padding:0;border-radius:var(--r-s)}
   .icon-btn svg{width:19px;height:19px}
   .icon-btn:hover svg{transform:rotate(45deg)}
-  .icon-btn svg{transition:transform .4s cubic-bezier(.34,1.2,.4,1)}
+  .icon-btn svg{transition:transform .4s var(--feder)}
 
   .sheet{max-width:440px}
   .sheet-grab{display:none}
@@ -1179,14 +1333,14 @@
   /* Jahreswaehler: die Zahl traegt den Block, die Pfeile bleiben zurueckhaltend */
   .jahr-waehler{
     display:flex;align-items:center;justify-content:center;gap:18px;
-    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 12px;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--r-m);padding:9px 12px;
   }
   .jahr-waehler b{
     font-size:24px;font-weight:800;min-width:82px;text-align:center;
     font-variant-numeric:tabular-nums;letter-spacing:-.01em;
   }
   .jahr-waehler button{
-    width:34px;height:34px;border-radius:10px;border:1px solid var(--line);
+    width:34px;height:34px;border-radius:var(--r-s);border:1px solid var(--line);
     background:var(--panel-2);color:var(--text);font-size:17px;line-height:1;padding:0;
     transition:transform .12s ease,border-color .12s ease,background-color .12s ease;
   }
@@ -1197,7 +1351,7 @@
   .opt-title{font-size:14px;font-weight:600}
   .opt-sub{color:var(--muted);font-size:12px;margin-top:2px}
   .switch{
-    width:48px;min-width:48px;height:28px;border-radius:999px;padding:3px;border:1px solid var(--line);
+    width:48px;min-width:48px;height:28px;border-radius:var(--r-rund);padding:3px;border:1px solid var(--line);
     background:var(--panel-2);display:flex;align-items:center;
     transition:background-color .26s ease,border-color .26s ease;
   }
@@ -1311,13 +1465,13 @@
     /* Modals fahren als Blatt von unten herein statt mittig zu schweben */
     .overlay{align-items:flex-end;padding:0}
     .modal{
-      max-width:none;border-radius:22px 22px 0 0;max-height:88vh;
+      max-width:none;border-radius:var(--r-l) var(--r-l) 0 0;max-height:88vh;
       padding:8px 16px calc(18px + env(safe-area-inset-bottom));
       transform:translateY(26px) scale(1);
     }
     .overlay.show .modal{transform:none}
     .sheet-grab{
-      display:block;width:38px;height:4px;border-radius:999px;background:var(--line);
+      display:block;width:38px;height:4px;border-radius:var(--r-rund);background:var(--line);
       margin:6px auto 12px;
     }
     .modal h3{margin-top:6px}
@@ -1334,7 +1488,7 @@
     .ymonth h4{font-size:11.5px}
     .ycell{font-size:9px}
     .month-grid{gap:5px}
-    .mcell{border-radius:12px;font-size:14px;gap:2px}
+    .mcell{border-radius:var(--r-m);font-size:14px;gap:2px}
     .mcell .dt{width:4px;height:4px}
     .band-box{max-width:none}
     .wd{font-size:11px}
@@ -1343,7 +1497,7 @@
     .stats-wrap{padding:14px 14px 20px}
     .tiles{gap:8px}
     .tile{padding:14px 6px 12px}
-    .tile .ic{width:32px;height:32px;margin-bottom:8px;border-radius:10px}
+    .tile .ic{width:32px;height:32px;margin-bottom:8px;border-radius:var(--r-s)}
     .tile .ic svg{width:17px;height:17px}
     .tile .val{font-size:23px}
     .tile .lbl{font-size:10.5px}
@@ -1383,10 +1537,12 @@
       <span class="heute-pfeil">›</span>
     </button>
     <div class="quick-bar" id="quickBar">
-      <span id="quickCount">0 ausgewählt</span>
-      <div class="quick-actions">
-        <button class="btn" id="quickCancel">Abbrechen</button>
-        <button class="btn primary" id="quickApply">Übernehmen</button>
+      <div class="quick-innen">
+        <span id="quickCount">0 ausgewählt</span>
+        <div class="quick-actions">
+          <button class="btn" id="quickCancel">Abbrechen</button>
+          <button class="btn primary" id="quickApply">Übernehmen</button>
+        </div>
       </div>
     </div>
     <div class="habit-list" id="habitList"></div>
@@ -2273,6 +2429,7 @@
         '<span class="habit-pick">'+ICONS.check+'</span>';
       // Im Schnellmodus: heute nicht eingeplante Habits sind nicht auswählbar
       if(quickMode){
+        card.style.setProperty("--pd", (idx*45)+"ms");
         if(!isPlanned(h, heute())) card.classList.add("notoday");
         else if(quickPicked.has(h.id)) card.classList.add("picked");
       }
@@ -2816,6 +2973,66 @@
     el.classList.remove("pulse-on","pulse-off");
     void el.offsetWidth;
     el.classList.add(done ? "pulse-on" : "pulse-off");
+    if(done) bandTropfen(root, el);
+  }
+
+  // ---------- Wassertropfen im Verlaufsband ----------
+  // Abgehakt wird unten im Monat -- die Welle läuft OBEN im Jahresband. Damit
+  // zeigt sich der eben gemachte Tag im Zusammenhang des ganzen Jahres, ohne
+  // dass der Kalender selbst unruhig wird. Am Regler ausgesucht.
+  //
+  // Bewusst über CSS-Keyframes und nicht über eine Bildfolge: Es sind bis zu
+  // 360 Kästchen. Eine Bildfolge müsste jedes davon sechzigmal pro Sekunde
+  // anfassen; so rechnet der Browser jede Kachel einzeln auf der Grafikkarte.
+  const TR = { tempo:115, weite:9, staerke:26, abkling:45, wipp:530, hub:22 };
+  // Höchstwert der gedämpften Halbwelle sin(pi*u)*e^(-1,9u) -- sie erreicht nie
+  // 1, sondern 0,46 bei u = 0,33. Ohne diesen Faktor wäre die Bewegung im
+  // Vergleich zur Vorschau mehr als doppelt so stark.
+  const TR_SPITZE = 0.46;
+
+  function bandTropfen(root, quelle){
+    if(!animOn || motionOff()) return;
+    const grid = root.querySelector(".band-grid");
+    const scroll = root.querySelector("#bandScroll");
+    if(!grid || !scroll) return;
+    const spalten = parseInt(getComputedStyle(scroll).getPropertyValue("--cols"), 10);
+    if(!spalten) return;
+
+    // Die Kästchen stehen zeilenweise im DOM (sieben Zeilen à "spalten"), auch
+    // die leeren -- deshalb ergibt sich die Rasterposition direkt aus dem Index.
+    const zellen = [...grid.children];
+    const qi = zellen.indexOf(quelle);
+    if(qi < 0) return;
+    const qx = qi % spalten, qy = (qi / spalten) | 0;
+
+    let letzte = 0;
+    zellen.forEach((z, i)=>{
+      if(i === qi) return;                    // die Quelle pulst schon selbst
+      const dx = (i % spalten) - qx, dy = ((i / spalten) | 0) - qy;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if(d > TR.weite) return;
+      // Stärke fällt mit dem Abstand und läuft am Rand der Reichweite auf null
+      // aus -- sonst gäbe es eine sichtbare Kante, an der die Welle aufhört.
+      const faktor = Math.pow(Math.max(0, 1 - d/TR.weite), TR.abkling/100*3);
+      const hub = TR_SPITZE * (TR.staerke/100) * TR.hub * faktor;
+      if(hub < 0.15) return;                  // unter einem Sechstel Pixel sieht niemand etwas
+      const verzug = d * TR.tempo;
+      z.style.setProperty("--ta", (-hub).toFixed(2)+"px");
+      z.style.setProperty("--tv", Math.round(verzug)+"ms");
+      z.classList.add("tropfen");
+      letzte = Math.max(letzte, verzug);
+    });
+
+    // Einmal aufräumen für alle. Ein "animationend" je Kästchen wären bis zu
+    // 360 Zuhörer für dieselbe Aufgabe.
+    clearTimeout(bandTropfen.netz);
+    bandTropfen.netz = setTimeout(()=>{
+      grid.querySelectorAll(".bcell.tropfen").forEach(z=>{
+        z.classList.remove("tropfen");
+        z.style.removeProperty("--ta");
+        z.style.removeProperty("--tv");
+      });
+    }, letzte + TR.wipp + 120);
   }
   function wireCalendar(content, h, wave){
     fitBand(content, true);
@@ -2843,6 +3060,18 @@
     // Band: ein Tipp springt zu dem Monat, statt den Tag umzuschalten --
     // bei rund 20 Pixeln Kantenlänge wäre Abhaken zu fehleranfällig.
     content.querySelectorAll(".bcell[data-jump]").forEach(el=>el.addEventListener("click", ()=>{
+      // Erst sagen, welcher Tag das war -- dann erst springen. Vorher sprang
+      // die Ansicht weg, ohne dass man wusste, worauf man getippt hatte.
+      const [jy,jm,jd] = el.dataset.k.split("-").map(Number);
+      const tag = new Date(jy,jm,jd);
+      const anzeige = content.querySelector("#bandTag");
+      if(anzeige){
+        anzeige.textContent = WD_SHORT[wdMon(tag)]+", "+jd+". "+MONTHS[jm]+
+          (el.classList.contains("done") ? " · erfüllt" : (sameDay(tag, heute()) ? " · heute" : " · offen"));
+        anzeige.classList.remove("an"); void anzeige.offsetWidth; anzeige.classList.add("an");
+      }
+      content.querySelectorAll(".bcell.gewaehlt").forEach(x=>x.classList.remove("gewaehlt"));
+      el.classList.add("gewaehlt");
       const m = parseInt(el.dataset.jump, 10);
       if(m!==calMonth) scrollToMonth(m, true);
     }));
@@ -2957,6 +3186,8 @@
 
   // ---------- Kalender ----------
   const WD_SHORT = ["Mo","Di","Mi","Do","Fr","Sa","So"];
+  // Ausgeschrieben fuer Fliesstext ("am besten montags")
+  const WD_LANG = ["montags","dienstags","mittwochs","donnerstags","freitags","samstags","sonntags"];
   const BAND_VISIBLE = 18; // sichtbare Wochenspalten = rund vier Monate
 
   // Wochentag mit Montag = 0 (getDay() liefert Sonntag = 0, das passt nicht zur
@@ -3017,7 +3248,13 @@
     raster += '</div>';
 
     const wd = '<div class="band-wd">'+WD_SHORT.map((w,i)=>'<span>'+(i%2===0?w:"")+'</span>').join("")+'</div>';
-    return '<div class="card-title" style="margin-bottom:10px">Verlauf</div>'+
+    // Die Kaestchen tragen zwar ein title-Attribut, das aber nur mit Maus
+    // sichtbar wird. Am Handy gibt es kein Hover -- deshalb eine echte Anzeige
+    // neben der Ueberschrift, die beim Antippen sagt, welcher Tag das war.
+    return '<div class="band-kopf">'+
+             '<span class="card-title">Verlauf</span>'+
+             '<span class="band-tag" id="bandTag"></span>'+
+           '</div>'+
            '<div class="band-box">'+wd+
              '<div class="band-scroll" id="bandScroll" style="--cols:'+spalten+'">'+kopf+raster+'</div>'+
            '</div>';
@@ -3226,6 +3463,59 @@
       if(c > meiste){ meiste = c; besterMonat = m; }
     }
     return { monat: besterMonat, anzahl: meiste };
+  }
+
+  // ---------- Wochentage ----------
+  // An welchen Tagen läuft es? Gerechnet wird je Wochentag der Anteil erfüllter
+  // an geplanten Tagen -- nicht die blanke Zahl. Sonst stünde ein Loop, der nur
+  // montags läuft, an allen anderen Tagen auf null und sähe nach Versagen aus.
+  function weekdaySeries(scope, year){
+    const t = heute();
+    const erf = new Array(7).fill(0), gepl = new Array(7).fill(0);
+    for(let m=0;m<12;m++){
+      const dim = daysInMonth(year, m);
+      for(let d=1; d<=dim; d++){
+        const dt = new Date(year,m,d);
+        if(dt > t) continue;               // die Zukunft sagt nichts
+        const wd = wdMon(dt);
+        scope.forEach(h=>{
+          if(!countsForStreakYMD(h, year, m, d)) return;
+          gepl[wd]++;
+          if((h.days||{})[key(year,m,d)]) erf[wd]++;
+        });
+      }
+    }
+    return gepl.map((g,i)=>({ pct: g ? erf[i]/g*100 : null, erf: erf[i], gepl: g }));
+  }
+
+  // ---------- Serien im Jahresverlauf ----------
+  // Wo liefen die Serien, wo brachen sie ab? Zurückgegeben wird je Lauf der
+  // ERSTE und LETZTE Kalendertag sowie die Zahl der Wiederholungen -- beides
+  // wird gebraucht: Die Lage auf der Zeitachse geht nach dem Datum, die Länge
+  // zählt Wiederholungen. Bei einem Loop, der nur Mo/Mi/Fr läuft, sind neun
+  // Wiederholungen drei Wochen breit.
+  function streakRuns(h){
+    const days = h.days||{}, y = h.year, t = heute();
+    const runs = [];
+    let lauf = null, fertig = false;
+    for(let m=0;m<12 && !fertig;m++){
+      const dim = daysInMonth(y,m);
+      for(let d=1; d<=dim; d++){
+        const dt = new Date(y,m,d);
+        if(dt > t){ fertig = true; break; }
+        if(!countsForStreakYMD(h,y,m,d)) continue;   // überspringen, nicht brechen
+        if(days[key(y,m,d)]){
+          if(!lauf) lauf = { von: dt, bis: dt, wied: 0 };
+          lauf.bis = dt; lauf.wied++;
+        }else if(lauf){ runs.push(lauf); lauf = null; }
+      }
+    }
+    if(lauf) runs.push(lauf);
+    return runs;
+  }
+  // Tag im Jahr, 0-basiert -- die Lage auf der Zeitachse.
+  function tagImJahr(d){
+    return Math.round((d - new Date(d.getFullYear(),0,1)) / 86400000);
   }
 
   // ---------- Nur für die Gesamtsicht ----------
@@ -3914,6 +4204,44 @@
         '</div>').join("")+
       '</div></div>';
 
+    // ---- Wochentage ----
+    const wds = weekdaySeries(scope, currentYear);
+    const wdMitDaten = wds.filter(w=>w.pct !== null);
+    let wochentage = "";
+    if(wdMitDaten.length > 1){
+      const best = wds.reduce((a,w,i)=> (w.pct !== null && (a<0 || w.pct > wds[a].pct)) ? i : a, -1);
+      const schwach = wds.reduce((a,w,i)=> (w.pct !== null && (a<0 || w.pct < wds[a].pct)) ? i : a, -1);
+      const spanne = wds[best].pct - wds[schwach].pct;
+      wochentage = '<div class="card reveal" data-job="months">'+
+        '<div class="card-head"><div>'+
+          '<div class="card-title">Wochentage'+INFO_BTN+'</div>'+
+          '<div class="card-sub">'+
+            (spanne < 12
+              ? 'Über die Woche gleichmäßig'
+              : 'Am besten '+WD_LANG[best]+', am schwächsten '+WD_LANG[schwach])+
+          '</div>'+
+        '</div></div>'+
+        infoText(
+          'Gerechnet wird je Wochentag der <b>Anteil erfüllter an geplanten Tagen</b>, '+
+          'nicht die blanke Zahl. Ein Loop, der nur montags läuft, stünde sonst an allen '+
+          'anderen Tagen auf null und sähe nach Versagen aus.<br><br>'+
+          'Tage ohne einen einzigen geplanten Termin bleiben leer — dort gibt es nichts zu '+
+          'bewerten. Ausgenommene Tage zählen weder mit noch gegen dich.<br><br>'+
+          'Der Nutzen liegt im Handeln: Wenn sonntags nie etwas klappt, kannst du den Tag '+
+          'aus dem Zeitraum nehmen, statt ihn jede Woche zu verlieren.'
+        )+
+        '<div class="mbars wochen">'+ wds.map((w,i)=>
+          w.pct === null
+            ? '<div class="mbar leer"><div class="pctv">–</div><div class="track"></div>'+
+              '<div class="cap">'+WD_SHORT[i]+'</div></div>'
+            : '<div class="mbar'+(i===best?" spitze":"")+'" title="'+WD_LANG[i]+': '+w.erf+' von '+w.gepl+'">'+
+                '<div class="pctv">'+Math.round(w.pct)+'%</div>'+
+                '<div class="track"><span class="fill" data-h="'+w.pct.toFixed(1)+'" style="'+gradientStyle(color)+'"></span></div>'+
+                '<div class="cap">'+WD_SHORT[i]+'</div>'+
+              '</div>').join("")+
+        '</div></div>';
+    }
+
     // ---- Hochrechnung aufs Jahresende (in den Einstellungen abschaltbar) ----
     // Steht bewusst GANZ OBEN: Die Frage dieser App ist "komme ich bis zum
     // Jahresende an mein Ziel", nicht "wie viele Tage am Stück". Serien sind
@@ -4094,7 +4422,7 @@
         rumpf += '<div class="yc-list">'+ yc.zeilen.map(z=>{
           const diff = z.neu ? 0 : (z.pct - z.pctV);
           const sym = z.h.icon
-            ? '<span class="habit-icon" style="color:'+z.h.color+';width:22px;height:22px;border-radius:7px">'+iconSvg(z.h.icon,13)+'</span>'
+            ? '<span class="habit-icon" style="color:'+z.h.color+';width:22px;height:22px;border-radius:var(--r-s)">'+iconSvg(z.h.icon,13)+'</span>'
             : '<span class="dot" style="background:'+z.h.color+'"></span>';
           const flags = [];
           if(z.neu) flags.push("neu in diesem Jahr");
@@ -4181,21 +4509,29 @@
                 'durch Wiederholung in kurzen Abständen. Das ist kein Mangel — es bleibt '+
                 'eine bewusste Entscheidung, und die zählt genauso.</span>';
       }else if(hb.erreicht){
-        hKopf = "Sitzt";
+        hKopf = "Sitzt";  // eines von vier Zustandswoertern: Sitzt/Wackelt/Stockt/Waechst
         hFarbe = "var(--good)";
         hText = '<b style="color:var(--good)">Verinnerlicht.</b><br>'+
                 hb.wied+' Wiederholungen, zuletzt '+hb.fensterWied+' in '+hb.fensterTage+' Tagen'+
                 (hb.taeglich ? '' : ' (dein Rhythmus wären '+hb.soll+')')+'. '+
                 'Ab hier läuft es weitgehend von allein.';
       }else if(hb.wackelt){
-        // Die 66 bleiben stehen -- weggenommen wird nichts. Aber der laufende
-        // Rhythmus trägt sie gerade nicht, und das gehört gesagt.
-        hKopf = "Sitzt";
+        // Das grosse Wort sagt den JETZIGEN Zustand, nicht die Vergangenheit.
+        // "Sitzt" stand hier vorher auch dann, wenn seit vier Wochen nichts
+        // mehr lief -- das war schlicht falsch. Die 66 Wiederholungen bleiben
+        // trotzdem stehen, sie stehen nur nicht mehr im Vordergrund.
+        hKopf = "Wackelt";
         hFarbe = "#ffb454";
-        hText = '<b style="color:#ffb454">Sitzt, aber es wackelt.</b><br>'+
-                '<span style="color:var(--muted)">Die '+hb.wied+' Wiederholungen hast du — '+
-                'die bleiben. Zuletzt waren es aber nur <b>'+hb.fensterWied+'</b> in '+
-                hb.fensterTage+' Tagen, '+(hb.taeglich ? 'statt '+hb.soll : 'dein Rhythmus wären '+hb.soll)+'. '+
+        hText = '<b style="color:#ffb454">'+
+                (hb.fensterWied === 0
+                  ? 'Zuletzt gar nicht mehr.'
+                  : 'Nur noch '+hb.fensterWied+' in '+hb.fensterTage+' Tagen.')+'</b><br>'+
+                '<span style="color:var(--muted)">'+
+                (hb.fensterWied === 0
+                  ? 'In den letzten '+hb.fensterTage+' Tagen kein einziges Mal — '+
+                    (hb.taeglich ? 'gebraucht hätte es '+hb.soll : 'dein Rhythmus wären '+hb.soll)+'. '
+                  : (hb.taeglich ? 'Gebraucht hätte es '+hb.soll+'. ' : 'Dein Rhythmus wären '+hb.soll+'. '))+
+                'Deine '+hb.wied+' Wiederholungen bleiben dir — verlernt ist nichts. '+
                 'Ein paar Tage am Stück, und es steht wieder.</span>';
       }else if(!hb.gestartet){
         hKopf = "–";
@@ -4203,21 +4539,22 @@
         hText = 'Noch kein Tag abgehakt.<br>'+
                 '<span style="color:var(--muted)">Die Zählung beginnt mit dem ersten Haken.</span>';
       }else if(hb.quoteZuNiedrig){
-        hKopf = hb.wied;
+        hKopf = "Stockt";
         hFarbe = "#ffb454";
-        hText = 'von '+HAB_ZIEL+' Wiederholungen<br>'+
-                '<span style="color:#ffb454">Zuletzt '+hb.fensterWied+' in '+hb.fensterTage+
-                ' Tagen, '+(hb.taeglich ? 'statt '+hb.soll : 'dein Rhythmus wären '+hb.soll)+
-                ' – noch nicht gefestigt.</span> '+
-                '<span style="color:var(--muted)">Ab '+HAB_QUOTE+'% zählt es als verinnerlicht. '+
-                'Nichts geht verloren, die Zählung läuft weiter.</span>';
+        hText = '<b style="color:#ffb454">Zuletzt '+hb.fensterWied+' in '+hb.fensterTage+' Tagen, '+
+                (hb.taeglich ? 'gebraucht hätte es '+hb.soll : 'dein Rhythmus wären '+hb.soll)+'.</b><br>'+
+                '<span style="color:var(--muted)">Gefestigt hat es sich so noch nicht. '+
+                'Nichts geht verloren — die Zählung läuft weiter, du stehst bei '+hb.wied+'.</span>';
       }else{
-        hKopf = hb.wied;
+        // Das grosse Wort ist der Zustand, nicht die Zahl. Die 66 sind eine
+        // Wegmarke, kein Maßstab -- sie stehen weiter im Text, aber nicht mehr
+        // gross an der Wand.
+        hKopf = "Wächst";
         hFarbe = color;
-        hText = 'von '+HAB_ZIEL+' Wiederholungen<br>'+
+        hText = '<b>Der Rhythmus stimmt.</b><br>'+
                 '<span style="color:var(--muted)">Zuletzt '+hb.fensterWied+' in '+hb.fensterTage+
-                ' Tagen'+(hb.taeglich ? '' : ' (dein Rhythmus wären '+hb.soll+')')+', das reicht. '+
-                'Noch '+(HAB_ZIEL-hb.wied)+' mal, dann sitzt es.</span>';
+                ' Tagen'+(hb.taeglich ? '' : ' (dein Rhythmus wären '+hb.soll+')')+'. '+
+                'Bei '+hb.wied+' von '+HAB_ZIEL+' Wiederholungen — noch '+(HAB_ZIEL-hb.wied)+' mal.</span>';
       }
       sitzt = '<div class="card reveal">'+
         '<div class="card-head"><div>'+
@@ -4261,7 +4598,9 @@
           'Gezählt wird ab deinem ersten Haken. Ausgenommene Tage bleiben außen vor.'
         )+
         '<div class="fc-row">'+
-          '<div class="fc-big" style="color:'+hFarbe+'">'+hKopf+'</div>'+
+          // Zustandswoerter sind laenger als Zahlen und bekommen deshalb einen
+          // eigenen Schriftgrad -- "Wackelt" in 36 px sprengte die Zeile.
+          '<div class="fc-big'+(isNaN(parseInt(hKopf,10)) ? " wort" : "")+'" style="color:'+hFarbe+'">'+hKopf+'</div>'+
           '<div class="fc-txt">'+hText+'</div>'+
         '</div>'+
         (ohneBalken ? "" :
@@ -4303,6 +4642,80 @@
           : "")+
       '</div></div>';
 
+    // ---- Serien im Jahresverlauf ----
+    // Eine Zeitachse über das Jahr: Jeder Lauf ist ein Riegel, jede Lücke eine
+    // Lücke. Die Lage geht nach dem DATUM, die Länge zählt WIEDERHOLUNGEN --
+    // bei einem Loop, der nur Mo/Mi/Fr läuft, sind neun Wiederholungen drei
+    // Wochen breit. Beides gehört zusammen, sonst lügt entweder die Lage oder
+    // die Zahl.
+    const jahrTage = daysInYear(currentYear);
+    const heuteTag = (currentYear === heute().getFullYear()) ? tagImJahr(heute()) : jahrTage-1;
+    // Monatsgrenzen als Anteil des Jahres -- Monate sind unterschiedlich lang,
+    // ein Raster aus zwölf gleichen Spalten läge daneben. Dieselben Werte
+    // tragen die Linien in der Spur UND die Beschriftung darunter, damit beide
+    // garantiert übereinanderliegen.
+    const monatsAnteil = [];
+    for(let m=0, tag=0; m<12; m++){
+      monatsAnteil.push(tag/jahrTage*100);
+      tag += daysInMonth(currentYear, m);
+    }
+    const monatsLinien = monatsAnteil.slice(1)
+      .map(p=>'<span class="sl-linie" style="left:'+p.toFixed(2)+'%"></span>').join("");
+
+    const bandFuer = (h, hoch)=>{
+      const runs = streakRuns(h);
+      const laengster = runs.reduce((a,r)=>Math.max(a,r.wied), 0);
+      return '<div class="sl-spur" style="height:'+hoch+'px">'+
+        monatsLinien+
+        runs.map(r=>{
+          const von = tagImJahr(r.von), bis = tagImJahr(r.bis);
+          const l = (von/jahrTage*100), b2 = Math.max(0.5, (bis-von+1)/jahrTage*100);
+          return '<span class="sl-lauf'+(r.wied===laengster && laengster>1 ? " top" : "")+'"'+
+            ' style="left:'+l.toFixed(2)+'%;width:'+b2.toFixed(2)+'%;'+gradientStyle(h.color)+'"'+
+            ' title="'+r.wied+'× · '+fmtD(r.von)+' bis '+fmtD(r.bis)+'"></span>';
+        }).join("")+
+        // Heute-Marke: zeigt, wie viel des Jahres überhaupt schon vorbei ist.
+        '<span class="sl-heute" style="left:'+(heuteTag/jahrTage*100).toFixed(2)+'%"></span>'+
+      '</div>';
+    };
+
+    let serienlauf = "";
+    if(scope.length){
+      const alleRuns = scope.map(streakRuns);
+      const gesamtLaeufe = alleRuns.reduce((a,r)=>a+r.length, 0);
+      if(gesamtLaeufe > 0){
+        const laengster = alleRuns.reduce((a,rs)=>Math.max(a, rs.reduce((b,r)=>Math.max(b,r.wied),0)), 0);
+        serienlauf = '<div class="card reveal">'+
+          '<div class="card-head"><div>'+
+            '<div class="card-title">Serien im Jahr'+INFO_BTN+'</div>'+
+            '<div class="card-sub">'+gesamtLaeufe+' '+(gesamtLaeufe===1?"Serie":"Serien")+
+              ', die längste über '+laengster+'×</div>'+
+          '</div></div>'+
+          infoText(
+            'Jeder Riegel ist eine Serie, jede Lücke ein Abbruch. Die <b>Lage</b> auf der '+
+            'Achse geht nach dem Datum, die <b>Länge</b> zählt Wiederholungen — bei einem '+
+            'Loop, der nur montags, mittwochs und freitags läuft, sind neun Wiederholungen '+
+            'drei Wochen breit.<br><br>'+
+            'Nicht geplante und ausgenommene Tage brechen nichts ab, sie werden übersprungen. '+
+            'Der helle Strich zeigt, wo das Jahr gerade steht.<br><br>'+
+            'Die Karte beantwortet, was keine Durchschnittszahl beantwortet: <b>wann</b> es '+
+            'lief und <b>wo</b> es riss.'
+          )+
+          '<div class="sl-box">'+
+            (all
+              ? scope.map(h=>'<div class="sl-zeile">'+
+                  '<span class="sl-name" style="color:'+h.color+'">'+escapeHtml(h.name)+'</span>'+
+                  bandFuer(h, 12)+'</div>').join("")
+              : bandFuer(scope[0], 26))+
+            '<div class="sl-achse'+(all?" eingerueckt":"")+'">'+
+              monatsAnteil.map((p,i)=> i%2 ? "" :
+                '<span style="left:'+p.toFixed(2)+'%">'+MONTHS_SHORT[i]+'</span>').join("")+
+            '</div>'+
+          '</div>'+
+        '</div>';
+      }
+    }
+
     // ---- Rangliste (nur in der Gesamtübersicht sinnvoll) ----
     // Hieß früher "Vergleich" -- zu nah an "Jahresvergleich", der etwas ganz
     // anderes zeigt. Zwei Karten, deren Namen sich um ein Wort unterscheiden,
@@ -4322,7 +4735,7 @@
           '<div class="rank-row">'+
             '<span class="rank-no">'+(i+1)+'</span>'+
             (r.x.icon
-              ? '<span class="habit-icon" style="color:'+r.x.color+';width:22px;height:22px;border-radius:7px">'+iconSvg(r.x.icon,13)+'</span>'
+              ? '<span class="habit-icon" style="color:'+r.x.color+';width:22px;height:22px;border-radius:var(--r-s)">'+iconSvg(r.x.icon,13)+'</span>'
               : '<span class="dot" style="background:'+r.x.color+'"></span>')+
             '<span class="rank-name">'+escapeHtml(r.x.name)+'</span>'+
             '<span class="rank-bar"><span style="width:'+r.pct+'%;'+gradientStyle(r.x.color)+'"></span></span>'+
@@ -4338,8 +4751,8 @@
     html += kacheln;
     html += abschnitt("Deine Loops", rangliste);
     html += abschnitt("Dein Jahr", hochrechnung + vergleich);
-    html += abschnitt("Wie es läuft", oben);
-    html += abschnitt("Wie fest es sitzt", sitzt + durchhalten);
+    html += abschnitt("Wie es läuft", oben + wochentage);
+    html += abschnitt("Wie fest es sitzt", sitzt + serienlauf + durchhalten);
 
     html += '</div>';
     content.innerHTML = html;
@@ -4645,7 +5058,7 @@
   // so kostet ein Habit ohne Text keinen zusätzlichen Platz.
   function habitTitleHtml(h, mitNotiz){
     const marke = h.icon
-      ? '<span class="habit-icon" style="color:'+h.color+';width:30px;height:30px;border-radius:10px">'+iconSvg(h.icon,18)+'</span>'
+      ? '<span class="habit-icon" style="color:'+h.color+';width:30px;height:30px;border-radius:var(--r-s)">'+iconSvg(h.icon,18)+'</span>'
       : '<span class="dot" style="background:'+h.color+';width:16px;height:16px"></span>';
     const notiz = (mitNotiz && h.note) ? '<span class="habit-note">'+escapeHtml(h.note)+'</span>' : '';
     return marke + '<span class="title-text"><span>'+escapeHtml(h.name)+'</span>'+notiz+'</span>';
@@ -5311,7 +5724,7 @@
   // wird neu gezogen.
   let markenLoopId = null;
   function markenLoop(){
-    if(!markeLoopOn) return null;
+    if(!markeLoopOn){ setzeSitzungsfarbe(null); return null; }
     const liste = habitsOfYear(currentYear);
     if(!liste.length) return null;
     let h = liste.find(x=>x.id===markenLoopId);
@@ -5327,7 +5740,24 @@
       markenLoopId = h.id;
       try{ localStorage.setItem(MARKE_LETZT_KEY, h.id); }catch(e){}
     }
+    setzeSitzungsfarbe(h.color);
     return h;
+  }
+
+  // Die Farbe der Sitzung liegt am Wurzelelement, damit sie ueberall zur
+  // Verfuegung steht -- Startbild, Wortmarke und die Heute-Zeile sprechen
+  // dadurch dieselbe Sprache, ohne dass die Farbe irgendwo doppelt steht.
+  // --sessfg ist die dazu lesbare Schriftfarbe: Bei einem hellen Gelb waere
+  // Weiss auf der Flaeche nicht zu entziffern.
+  function setzeSitzungsfarbe(farbe){
+    const w = document.documentElement.style;
+    if(farbe){
+      w.setProperty("--sess", farbe);
+      w.setProperty("--sessfg", istHell(farbe) ? "#171a21" : "#ffffff");
+    }else{
+      w.removeProperty("--sess");
+      w.removeProperty("--sessfg");
+    }
   }
 
   function aktualisiereMarke(sofort){
@@ -5449,6 +5879,16 @@
       SPL_START + SPL_WELLE + 90 + k*((SPL_NACH - SPL_START - SPL_WELLE - 90)/SPL_LUECKEN.length));
     const alle = anZeit.concat(luZeit).sort((a,b)=>a-b);
 
+    // Zeitpunkt JE KACHEL einmal vorab bestimmen. Vorher lief in jedem Bild
+    // ein indexOf ueber beide Listen -- 35 Kacheln mal 35 Schritte, sechzigmal
+    // pro Sekunde, fuer eine Zahl, die sich nie aendert.
+    const zeitVon = new Array(SPL_N);
+    ordnung.forEach((i,k)=>{ zeitVon[i] = anZeit[k]; });
+    SPL_LUECKEN.forEach((i,k)=>{ zeitVon[i] = luZeit[k]; });
+    // Merkt sich, welche Kachel schon gefuellt ist -- Farbe und Ebene werden
+    // dann nur EINMAL geschrieben statt in jedem Bild neu.
+    const gefuellt = new Array(SPL_N).fill(false);
+
     // Kurzer Aufsprung beim Abhaken, wie im Kalender der App
     const huepf = (alter)=>{
       if(alter < 0 || alter > 300) return 0;
@@ -5464,14 +5904,18 @@
       const t = jetzt - t0;
 
       for(let i=0;i<SPL_N;i++){
-        const pos = ordnung.indexOf(i);
-        const zeit = pos >= 0 ? anZeit[pos] : luZeit[SPL_LUECKEN.indexOf(i)];
-        const alter = t - zeit;
+        const alter = t - zeitVon[i];
+        if(alter < 0) continue;
         const k = kacheln[i];
-        if(alter >= 0){
-          k.style.background = splFarbe;
+        if(!gefuellt[i]){ k.style.background = splFarbe; gefuellt[i] = true; }
+        // Nur solange die Kachel wirklich springt. Danach steht sie still und
+        // braucht keine Schreibvorgaenge mehr.
+        if(alter <= 300){
           k.style.transform = "scale("+(1 + 0.26*huepf(alter))+")";
-          k.style.zIndex = alter < 300 ? "2" : "1";
+          k.style.zIndex = "2";
+        }else if(k.style.zIndex !== "1"){
+          k.style.transform = "";
+          k.style.zIndex = "1";
         }
       }
 
@@ -5482,7 +5926,9 @@
       if(n > 0 && n < alle.length) weich = n + (t - alle[n-1])/(alle[n] - alle[n-1]);
       const anteil = Math.max(0, Math.min(1, weich/SPL_N));
       fill.style.transform = "scaleX("+anteil+")";
-      name.innerHTML = wortmarke(anteil, 31, splFarbe);
+      // Nur zwei Attribute statt eines kompletten Neuaufbaus. Gemessen ist der
+      // Neuaufbau 5,6-mal so teuer -- und ligSetze() gibt es fuer genau das.
+      ligSetze(markeSvg, anteil, splFarbe);
 
       // Schluss: kleiner Haken am Balken UND ein kurzer Stups des Rasters
       const nach = t - SPL_NACH;
@@ -5491,12 +5937,20 @@
         haken.style.opacity = nach < 1000 ? u : Math.max(0, 1-(nach-1000)/300);
         haken.style.transform = "translateY(-50%) scale("+(0.4+0.6*u)+")";
         gitter.style.transform = "scale("+(1 + 0.05*huepf(nach*0.9))+")";
+        // Der Schriftzug springt kurz mit auf -- etwas spaeter und kraeftiger
+        // als das Raster, damit es wie eine Antwort wirkt und nicht wie ein
+        // gemeinsames Zucken.
+        name.style.transform = "scale("+(1 + 0.085*huepf((nach-90)*0.85))+")";
       }
       if(t >= SPL_NACH + 140) name.style.color = "var(--text)";
 
       if(t < SPL_ENDE) requestAnimationFrame(bild);
     }
+    // EINMAL bauen, danach nur noch nachziehen.
+    name.innerHTML = wortmarke(0, 31, splFarbe);
+    const markeSvg = name.querySelector("svg");
     name.style.transition = "color 420ms var(--ease)";
+    name.style.transformOrigin = "center";
     gitter.style.transformOrigin = "center";
     requestAnimationFrame(bild);
 
