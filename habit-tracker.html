@@ -1932,10 +1932,15 @@
         <div class="opt-row">
           <div>
             <div class="opt-title">Glanz bei erreichtem Ziel</div>
-            <div class="opt-sub">Im vollen Fortschrittsbalken wandert dauerhaft ein leiser Glanz</div>
+            <div class="opt-sub">Der Feier-Ring läuft alle paar Sekunden erneut, solange das Ziel erreicht bleibt</div>
           </div>
           <button class="switch" id="glanzSwitch" role="switch" aria-checked="true"><span></span></button>
         </div>
+        <!-- Fehlte bisher: die Klasse .bewegung-hinweis war schon gestylt, aber
+             kein Element mit dieser id existierte. openSettings() griff darauf
+             zu (bh.style...) und brach deshalb bei JEDEM Aufruf sofort ab --
+             die Einstellungen liessen sich dadurch gar nicht mehr oeffnen. -->
+        <p class="bewegung-hinweis" id="bewegungHinweis" style="display:none;margin-top:11px"></p>
       </div>
 
       <div class="abschnitt">
@@ -3072,7 +3077,7 @@
       // Steht dauerhaft da, solange das Ziel erreicht ist -- nicht nur waehrend
       // der Feier. Ein Satz, der nach drei Sekunden verschwindet, ist keine
       // Aussage ueber einen Zustand, sondern eine Meldung.
-      '<div class="ziel-satz" id="zielSatz">Ziel erreicht. Dein Jahr steht.</div>'+
+      '<div class="ziel-satz" id="zielSatz">Ziel erreicht. Du hast das Jahr durchgezogen.</div>'+
       '</div>';
 
     // Die Welle spielt beim Öffnen einer Ansicht, aber nicht, wenn der Kalender
