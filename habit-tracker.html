@@ -444,10 +444,11 @@
   .goal-wrap > *{position:relative;z-index:1}
   .goal-head{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;min-width:0}
   .goal-head .big{font-size:13px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
-  .goal-head .big b{color:var(--text);font-size:19px}
+  .goal-head .big b{color:var(--text);font-size:19px;transition:font-size var(--dur) var(--ease)}
   .goal-rest{
     margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap;
     font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;
+    transition:opacity var(--dur) var(--ease);
   }
   .goal-bar{height:8px;border-radius:var(--r-xs);background:var(--panel-2);margin-top:9px;overflow:hidden;border:1px solid var(--line);transition:height var(--dur) var(--ease),margin-top var(--dur) var(--ease)}
   .goal-bar > span{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);transition:transform var(--dur-slow) var(--ease)}
@@ -455,6 +456,7 @@
     display:inline-flex;align-items:center;gap:4px;background:var(--panel-2);
     border:1px solid var(--line);border-radius:var(--r-rund);padding:3px 10px;font-size:12.5px;font-weight:700;
     font-variant-numeric:tabular-nums;white-space:nowrap;
+    transition:transform var(--dur) var(--ease),opacity var(--dur) var(--ease);
   }
   .streak-mini{color:var(--muted);font-weight:700;margin-left:6px;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;gap:4px}
   /* ---------- Serien-Flamme ----------
@@ -1039,7 +1041,7 @@
   .seg.mini button{font-size:12px;padding:6px 12px}
 
   /* ---------- Statistik ---------- */
-  .stats-wrap{padding:18px 26px 40px;max-width:1040px}
+  .stats-wrap{padding:18px 26px 40px;max-width:1280px}
   .stats-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 
   .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
@@ -2687,6 +2689,7 @@
         selectedId=h.id; mobileDetail=true; renderAll();
       });
       attachDragHandlers(card, h.id);
+      attachTouchDragHandlers(card, h.id);
       list.appendChild(card);
     });
 
@@ -2881,6 +2884,74 @@
     list.forEach((h,idx)=>{ h.order = idx; });
     save();
     renderSidebar();
+  }
+
+  // ---------- Touch-Ziehen (Reihenfolge am Handy) ----------
+  // Natives HTML5-Drag&Drop (oben) lief bisher nur mit der Maus -- Touch loest
+  // dessen Ereignisse grundsaetzlich nicht aus. Eigene, kleine Fassung mit
+  // denselben Endpunkten (reorderHabit) und denselben Zustandsklassen wie beim
+  // Maus-Ziehen, damit es sich gleich anfuehlt. Antippen und halten wie beim
+  // Umsortieren von Symbolen auf dem Home-Bildschirm: Ein kurzer Druck bleibt
+  // ein Antippen (oeffnet den Loop), erst nach der Wartezeit hebt sich die
+  // Karte spuerbar ab.
+  const TOUCH_HALTEN_MS = 420;
+  const TOUCH_SCHWELLE = 10;
+  function attachTouchDragHandlers(card, id){
+    let halten = null, ziehtGerade = false;
+    let startX = 0, startY = 0;
+    let zielKarte = null, davor = true;
+
+    function abbrechen(){ clearTimeout(halten); halten = null; }
+    function aufraeumen(){
+      card.classList.remove("dragging");
+      document.querySelectorAll(".habit-card").forEach(c=>c.classList.remove("drag-over-top","drag-over-bottom"));
+      ziehtGerade = false; zielKarte = null; abbrechen();
+    }
+
+    card.addEventListener("touchstart", (e)=>{
+      if(e.touches.length !== 1) return;
+      startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+      halten = setTimeout(()=>{
+        ziehtGerade = true;
+        card.classList.add("dragging");
+      }, TOUCH_HALTEN_MS);
+    }, {passive:true});
+
+    card.addEventListener("touchmove", (e)=>{
+      const t = e.touches[0];
+      if(!ziehtGerade){
+        // Vor dem Auslösen zaehlt jede groessere Bewegung als Scrollen, nicht
+        // als Zug-Absicht -- sonst liesse sich die Liste am Handy nicht mehr
+        // normal durchblaettern.
+        if(Math.abs(t.clientY-startY) > TOUCH_SCHWELLE || Math.abs(t.clientX-startX) > TOUCH_SCHWELLE) abbrechen();
+        return;
+      }
+      e.preventDefault();
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const ueber = el ? el.closest(".habit-card") : null;
+      document.querySelectorAll(".habit-card").forEach(c=>{ if(c!==card) c.classList.remove("drag-over-top","drag-over-bottom"); });
+      if(ueber && ueber!==card){
+        const rect = ueber.getBoundingClientRect();
+        davor = (t.clientY-rect.top) < rect.height/2;
+        ueber.classList.toggle("drag-over-top", davor);
+        ueber.classList.toggle("drag-over-bottom", !davor);
+        zielKarte = ueber;
+      }else{
+        zielKarte = null;
+      }
+    }, {passive:false});
+
+    card.addEventListener("touchend", (e)=>{
+      if(ziehtGerade){
+        // Verhindert, dass aus dem langen Druck zusaetzlich noch ein Klick
+        // wird, der den Loop oeffnet -- ein Loslassen nach dem Ziehen soll
+        // nur die neue Reihenfolge setzen, sonst nichts.
+        e.preventDefault();
+        if(zielKarte) reorderHabit(id, zielKarte.dataset.id, davor);
+      }
+      aufraeumen();
+    });
+    card.addEventListener("touchcancel", aufraeumen);
   }
 
   // ---------- Gezielte Updates ohne kompletten Re-render ----------
@@ -3516,7 +3587,14 @@
     if(!breite) return;
     const lueck = 3;
     const zelle = Math.max(9, (breite - lueck*(BAND_VISIBLE-1)) / BAND_VISIBLE);
-    bs.style.setProperty("--bcw", zelle.toFixed(2)+"px");
+    // Auf .band-box setzen, nicht auf bs selbst: .band-wd (die Wochentage)
+    // ist ein GESCHWISTER von #bandScroll, kein Kind -- eine Eigenschaft auf
+    // bs haette .band-wd nie erreicht, weil sich CSS-Variablen nur nach unten
+    // vererben. Genau das liess die Wochentage bisher auf den 15px-Ausweich-
+    // wert zurückfallen, sichtbar vor allem am Mac, wo die echten Kaestchen
+    // deutlich groesser als 15px werden.
+    const box = bs.closest(".band-box") || bs;
+    box.style.setProperty("--bcw", zelle.toFixed(2)+"px");
     if(ansEnde) bs.scrollLeft = bs.scrollWidth;
   }
 
