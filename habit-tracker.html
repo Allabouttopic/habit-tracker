@@ -412,24 +412,18 @@
      zweizeilig ist -- ein fester Wert wuerde hier zwangslaeufig danebenliegen. */
   /* ---------- Kopfbereich, der beim Scrollen zusammenfaehrt ----------
      Oben steht der Stand gross und mit Luft, beim Scrollen zieht er sich zu
-     einer schmalen Zeile zusammen. Alle Werte haengen an einem einzigen
-     Umschalter (body.eng), damit nichts auseinanderlaufen kann. */
+     einer schmalen Zeile zusammen. --kopf-t (0..1) haengt DIREKT und ohne
+     Verzoegerung an der Scrollposition (siehe pruefeKopf weiter unten) --
+     keine eigene Animationsdauer mehr, die Werte folgen dem Finger im selben
+     Augenblick. Vorher lief das ueber eine Schwelle und eine 350ms-Animation
+     (body.eng): Scrollte man waehrenddessen weiter, lief die Animation dem
+     Finger sichtbar hinterher -- genau DAS fuehlte sich wie Ruckeln an, nicht
+     nur der harte Sprung, den fehlende Uebergaenge zusaetzlich verursachten. */
+  :root{ --kopf-t:0; }
   .goal-wrap{
-    padding:10px 26px 12px;position:sticky;top:var(--topbar-h,64px);z-index:4;
+    padding:calc(10px - 5px*var(--kopf-t)) 26px calc(12px - 6px*var(--kopf-t));
+    position:sticky;top:var(--topbar-h,64px);z-index:4;
     overflow:hidden;background:var(--bg);border-bottom:1px solid var(--line);
-    transition:padding var(--dur) var(--ease);
-  }
-  body.eng .goal-wrap{padding-top:5px;padding-bottom:6px}
-  body.eng .goal-head .big b{font-size:15px}
-  body.eng .goal-bar{height:5px;margin-top:6px}
-  body.eng .goal-wrap::before{opacity:.18}
-  /* Das Serien-Abzeichen und der Resttext weichen zuerst -- sie sind die
-     Beigabe, die Zahl und der Balken bleiben. */
-  body.eng .streak-badge{transform:scale(.86);opacity:.75}
-  body.eng .goal-rest{opacity:0}
-  .goal-head .big b,.streak-badge,.goal-rest{
-    transition:font-size var(--dur) var(--ease),transform var(--dur) var(--ease),
-               opacity var(--dur) var(--ease);
   }
   /* Lichtschein als Farbverlauf, NICHT als weichgezeichneter Kreis.
      filter:blur() zwingt den Browser zu einer eigenen Ebene; in Verbindung
@@ -439,24 +433,33 @@
   .goal-wrap::before{
     content:"";position:absolute;top:-150px;left:-150px;width:440px;height:440px;
     background:radial-gradient(circle closest-side, var(--glow,transparent), transparent);
-    opacity:.34;pointer-events:none;z-index:0;
+    opacity:calc(.34 - .16*var(--kopf-t));pointer-events:none;z-index:0;
   }
   .goal-wrap > *{position:relative;z-index:1}
   .goal-head{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;min-width:0}
   .goal-head .big{font-size:13px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
-  .goal-head .big b{color:var(--text);font-size:19px;transition:font-size var(--dur) var(--ease)}
+  /* Skaliert statt die Schriftgroesse selbst zu aendern: transform kostet nur
+     die Grafikkarte, eine animierte font-size erzwingt bei JEDEM Bild einen
+     Neuaufbau des Textlayouts -- ausgerechnet bei jedem Scroll-Ereignis. */
+  .goal-head .big b{
+    color:var(--text);font-size:19px;display:inline-block;transform-origin:left center;
+    transform:scale(calc(1 - 0.2105*var(--kopf-t)));
+  }
   .goal-rest{
     margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap;
     font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;
-    transition:opacity var(--dur) var(--ease);
+    opacity:calc(1 - var(--kopf-t));
   }
-  .goal-bar{height:8px;border-radius:var(--r-xs);background:var(--panel-2);margin-top:9px;overflow:hidden;border:1px solid var(--line);transition:height var(--dur) var(--ease),margin-top var(--dur) var(--ease)}
+  .goal-bar{
+    height:calc(8px - 3px*var(--kopf-t));border-radius:var(--r-xs);background:var(--panel-2);
+    margin-top:calc(9px - 3px*var(--kopf-t));overflow:hidden;border:1px solid var(--line);
+  }
   .goal-bar > span{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);transition:transform var(--dur-slow) var(--ease)}
   .streak-badge{
     display:inline-flex;align-items:center;gap:4px;background:var(--panel-2);
     border:1px solid var(--line);border-radius:var(--r-rund);padding:3px 10px;font-size:12.5px;font-weight:700;
     font-variant-numeric:tabular-nums;white-space:nowrap;
-    transition:transform var(--dur) var(--ease),opacity var(--dur) var(--ease);
+    transform:scale(calc(1 - 0.14*var(--kopf-t)));opacity:calc(1 - 0.25*var(--kopf-t));
   }
   .streak-mini{color:var(--muted);font-weight:700;margin-left:6px;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;gap:4px}
   /* ---------- Serien-Flamme ----------
@@ -1214,10 +1217,13 @@
     opacity:0;height:0;overflow:hidden;transform:translateY(6px);
     transition:opacity var(--dur) var(--ease);
   }
-  /* Solange das Ziel steht, steht auch der Satz -- nicht nur drei Sekunden. */
-  .goal-wrap.erreicht .ziel-satz{opacity:1;transform:none;height:auto;margin-top:10px}
-  /* Im zusammengefahrenen Kopf weicht er wie der Resttext: dort zaehlt Platz. */
-  body.eng .goal-wrap.erreicht .ziel-satz{opacity:0;height:0;margin-top:0}
+  /* Solange das Ziel steht, steht auch der Satz -- nicht nur drei Sekunden.
+     Weicht im zusammengezogenen Kopf wie der Resttext, folgt dabei --kopf-t
+     direkt statt einer eigenen Uebergangszeit (siehe Kopfbereich weiter oben). */
+  .goal-wrap.erreicht .ziel-satz{
+    opacity:calc(1 - var(--kopf-t));transform:none;height:auto;
+    margin-top:calc(10px - 10px*var(--kopf-t));
+  }
   body.feiert .ziel-satz{animation:zielSatz 1280ms cubic-bezier(.25,.5,.4,1) 384ms both}
   @keyframes zielSatz{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   /* Der Lichtschein des Kopfbereichs hellt kurz auf */
@@ -5387,20 +5393,19 @@
   }
 
   // ---------- Kopfbereich beim Scrollen zusammenziehen ----------
-  // Am Mac scrollt .main, am Handy das Fenster -- deshalb beide fragen. Der
-  // Umschalter wird nur bei einem WECHSEL gesetzt: eine Klasse in jedem
-  // Scrollereignis zu schreiben waere Arbeit fuer nichts.
-  let kopfEng = false;
+  // Am Mac scrollt .main, am Handy das Fenster -- deshalb beide fragen.
+  // --kopf-t (0..1) wird bei JEDEM Scroll-Ereignis direkt aus der Position
+  // berechnet und sofort geschrieben -- kein Schwellwert, kein Umschalten
+  // einer Klasse, keine eigene Animationsdauer mehr. Vorher lief der Kopf
+  // einer 350ms-Animation hinterher, die an einer festen Schwelle auslöste --
+  // scrollte man waehrenddessen weiter, kam der Kopf sichtbar zu spaet nach.
+  // Das GENAU war das Ruckeln, nicht nur ein harter Sprung.
+  const KOPF_BIS = 54;
   function pruefeKopf(){
     const m = document.querySelector(".main");
     const oben = Math.max(window.scrollY || 0, m ? m.scrollTop : 0);
-    // Zwei Schwellen statt einer: Sonst flackert der Kopf, wenn man genau auf
-    // der Grenze steht -- das Zusammenziehen aendert die Hoehe und damit die
-    // Scrollposition selbst.
-    const eng = kopfEng ? oben > 26 : oben > 54;
-    if(eng === kopfEng) return;
-    kopfEng = eng;
-    document.body.classList.toggle("eng", eng);
+    const t = Math.max(0, Math.min(1, oben/KOPF_BIS));
+    document.documentElement.style.setProperty("--kopf-t", t.toFixed(3));
   }
   window.addEventListener("scroll", pruefeKopf, { passive:true });
   document.addEventListener("scroll", (e)=>{
