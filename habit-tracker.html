@@ -4,6 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Yearloop</title>
+
+<!-- Faerbt die Statusleiste/Adresszeile dunkel statt neutral-grau -->
+<meta name="theme-color" content="#0f1115">
+
+<!-- Vom Home-Bildschirm gestartet oeffnet sich die App ohne Safari-Chrome,
+     nicht in einem Browser-Tab mit Adressleiste. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Yearloop">
+
+<!-- Icon fuer "Zum Home-Bildschirm hinzufuegen". Die "lo"-Ligatur, exakt
+     dieselbe Geometrie wie die Wortmarke (siehe LG-Konstanten weiter unten). -->
+<link rel="apple-touch-icon" href="icon-180.png">
 <style>
   :root{
     --bg:#0f1115;
@@ -334,6 +347,21 @@
   .habit-top{display:flex;align-items:center;gap:9px}
   .dot{width:12px;height:12px;border-radius:50%;flex:none}
   .habit-name{font-weight:600;font-size:14.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* Erreichtes Ziel: ein Haken in der Loop-Farbe neben dem Namen. Er pulst
+     langsam mit -- dieselbe Aussage wie der Glanz im Balken, nur dort, wo man
+     zuerst hinsieht. */
+  .ziel-zeichen{
+    flex:none;width:18px;height:18px;border-radius:50%;display:flex;
+    align-items:center;justify-content:center;
+    background:color-mix(in srgb, var(--hc, var(--accent)) 24%, transparent);
+    color:var(--hc, var(--accent));
+  }
+  .ziel-zeichen svg{width:11px;height:11px}
+  body.glanz .ziel-zeichen{animation:zeichenPuls 4600ms ease-in-out infinite}
+  @keyframes zeichenPuls{
+    0%,100%{transform:scale(1);opacity:.85}
+    50%{transform:scale(1.14);opacity:1}
+  }
   .habit-count{color:var(--muted);font-size:12px;margin-top:8px;font-variant-numeric:tabular-nums}
   .bar{height:7px;border-radius:var(--r-xs);background:#0c0e12;margin-top:6px;overflow:hidden}
   /* Fortschrittsbalken wachsen ueber transform statt ueber width. Eine Breiten-
@@ -937,7 +965,31 @@
     align-items:center;justify-content:center;gap:26px;background:var(--bg);
     transition:opacity 420ms var(--ease),transform 420ms var(--ease);
   }
-  .splash.done{opacity:0;transform:scale(1.07);pointer-events:none}
+  /* Zum Schluss oeffnet sich der Ring des Logos und man wird hindurchgezogen:
+     Der Ring waechst ueber den Bildschirm hinaus, das Startbild weicht nach
+     hinten, und die App kommt von leicht hinten nach vorn. Alles ueber
+     transform und opacity -- das uebernimmt die Grafikkarte, und es laeuft
+     auch dann, wenn die Bildfolge gedrosselt ist. */
+  .splash.done{opacity:0;transform:scale(1.18);pointer-events:none}
+  .splash-tor{
+    position:fixed;left:0;top:0;width:10px;height:10px;border-radius:50%;
+    border:2px solid var(--spl, var(--accent));
+    opacity:0;pointer-events:none;z-index:1;
+    transform:translate(-50%,-50%) scale(1);
+  }
+  .splash.oeffnet .splash-tor{animation:torAuf 760ms cubic-bezier(.3,.05,.2,1) both}
+  @keyframes torAuf{
+    0%  {opacity:0;transform:translate(-50%,-50%) scale(1)}
+    18% {opacity:.9}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(var(--tor-max,90))}
+  }
+  /* Der Sog: Die App steht kurz hinten und kommt nach vorn. Sie liegt UNTER
+     dem Startbild, deshalb sieht man sie erst, wenn dieses weicht. */
+  body.sog .sidebar,body.sog .main{animation:sogRein 620ms cubic-bezier(.25,.5,.4,1) both}
+  @keyframes sogRein{
+    0%  {opacity:.4;transform:scale(.9)}
+    100%{opacity:1;transform:none}
+  }
 
   .splash-stage{width:250px}
   .splash-bar{
@@ -1174,18 +1226,21 @@
   body.feiert .lig-glanz{animation:ligGlanz 1984ms cubic-bezier(.25,.5,.4,1) 96ms both}
   @keyframes ligGlanz{0%{opacity:0}12%{opacity:.75}88%{opacity:.75}100%{opacity:0}}
 
-  /* Ist das Ziel erreicht, wandert dauerhaft ein leiser Glanz durch den
-     Balken. Bewusst langsam und schwach: Er soll beim Hinsehen auffallen und
-     beim Arbeiten nicht stoeren. Ueber transform statt "left", damit die
-     Grafikkarte ihn uebernimmt -- eine Dauerbewegung ueber eine Layout-
-     Eigenschaft waere den ganzen Tag Arbeit fuer den Hauptprozess. */
-  body.glanz .goal-bar.voll .ziel-welle{
-    left:0;width:34%;opacity:1;
-    animation:dauerGlanz 4600ms linear infinite;
-    background:linear-gradient(90deg,transparent,rgba(255,255,255,.34),transparent);
+  /* Ist das Ziel erreicht, laeuft der Ring aus der Feier in Abstaenden immer
+     wieder -- dasselbe kraeftige Zeichen wie beim ersten Erreichen, nicht nur
+     einmal. Eine einzige CSS-Dauerschleife statt eines JS-Timers: die ersten
+     17,6 % der 10 s spielen exakt die Kurve von "zielRing", der Rest der Zeit
+     steht sie bei Deckkraft 0 -- dadurch pausiert sie von selbst im
+     Hintergrund-Tab, ganz ohne sichtbarkeits Pruefung im Skript.
+     :not(.feiert) laesst der einmaligen Feier beim ersten Erreichen den
+     Vortritt, statt gleichzeitig mitzulaufen. */
+  body.glanz:not(.feiert) .goal-wrap.erreicht .ziel-ring{
+    animation:zielRingSchleife 10000ms linear infinite;
   }
-  @keyframes dauerGlanz{
-    0%{transform:translateX(-120%)} 55%{transform:translateX(330%)} 100%{transform:translateX(330%)}
+  @keyframes zielRingSchleife{
+    0%{opacity:.9;transform:scale(.35);animation-timing-function:cubic-bezier(.25,.5,.4,1)}
+    17.6%{opacity:0;transform:scale(3.4)}
+    100%{opacity:0;transform:scale(3.4)}
   }
   /* Waehrend der Feier hat die einmalige Welle Vorrang. */
   body.feiert .goal-bar.voll .ziel-welle{animation:zielWelle 1600ms cubic-bezier(.25,.5,.4,1) 144ms both}
@@ -1644,6 +1699,9 @@
       <div class="splash-grid" id="splashGrid"></div>
     </div>
     <div class="splash-name" id="splashName"></div>
+    <!-- Waechst am Schluss aus dem "o" heraus ueber den Bildschirm hinaus.
+         Er wird per JavaScript genau auf den Ring der Wortmarke gesetzt. -->
+    <span class="splash-tor" id="splashTor"></span>
   </div>
 
   <aside class="sidebar">
@@ -2571,7 +2629,11 @@
         (h.icon
           ? '<span class="habit-icon" style="color:'+h.color+'">'+iconSvg(h.icon,15)+'</span>'
           : '<span class="dot" style="background:'+h.color+'"></span>')+
-        '<span class="habit-name">'+escapeHtml(h.name)+'</span></div>'+
+        '<span class="habit-name">'+escapeHtml(h.name)+'</span>'+
+        // Steht das Ziel, sieht man es schon in der Uebersicht -- ohne zu
+        // suchen und ohne die Statistik zu oeffnen.
+        (done>=target ? '<span class="ziel-zeichen" title="Ziel erreicht">'+ICONS.check+'</span>' : "")+
+        '</div>'+
         '<div class="habit-count">'+done+' von '+target+' erfüllt · '+pct+'%'+
         (streak>0 ? '<span class="streak-mini">'+flameHTML(streak,15)+streak+'</span>' : '')+'</div>'+
         '<div class="bar"><span data-pct="'+pct+'" style="transform:scaleX('+(intro?0:pct/100)+');'+gradientStyle(h.color)+'"></span></div>'+
@@ -6427,7 +6489,30 @@
     gitter.style.transformOrigin = "center";
     requestAnimationFrame(bild);
 
-    setTimeout(()=>{ laeuft = false; s.classList.add("done"); }, 1990);
+    setTimeout(()=>{
+      laeuft = false;
+      // Den Ring der Wortmarke suchen und das Tor genau darauf setzen. Ohne
+      // Messung saesse es daneben, und der Sog ginge an der falschen Stelle los.
+      const o = markeSvg ? markeSvg.querySelector(".lig-o") : null;
+      const tor = document.getElementById("splashTor");
+      if(o && tor){
+        const r = o.getBoundingClientRect();
+        if(r.width > 0){
+          tor.style.left = (r.left + r.width/2)+"px";
+          tor.style.top  = (r.top + r.height/2)+"px";
+          tor.style.width = r.width+"px";
+          tor.style.height = r.width+"px";
+          // So weit, dass der Ring sicher ueber die laengste Bildschirmkante
+          // hinauswaechst -- sonst sieht man ihn am Rand stehen bleiben.
+          const weit = Math.hypot(window.innerWidth, window.innerHeight);
+          tor.style.setProperty("--tor-max", (weit/Math.max(1,r.width)*2.2).toFixed(1));
+        }
+      }
+      s.classList.add("oeffnet");
+      s.classList.add("done");
+      document.body.classList.add("sog");
+      setTimeout(()=>document.body.classList.remove("sog"), 700);
+    }, 1990);
     // Die Flammen setzen ein, waehrend das Startbild noch ausblendet.
     setTimeout(()=>{ splashLaeuft = false; playTrailIntro(); playFlameIntro(); }, 2170);
     setTimeout(()=>s.remove(), 2400);
