@@ -450,6 +450,7 @@
     font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;
     opacity:calc(1 - var(--kopf-t));
   }
+  @media (max-width:720px){ .goal-rest .rest-extra{display:none} }
   .goal-bar{
     height:calc(8px - 3px*var(--kopf-t));border-radius:var(--r-xs);background:var(--panel-2);
     margin-top:calc(9px - 3px*var(--kopf-t));overflow:hidden;border:1px solid var(--line);
@@ -588,7 +589,13 @@
   /* Abwaehlen bleibt bewusst leiser -- ein Widerruf soll nicht gefeiert werden */
   @keyframes checkUndo{ 0%{transform:scale(1)} 40%{transform:scale(.9)} 100%{transform:scale(1)} }
   .pulse-off{animation:checkUndo var(--dur-fast) var(--ease)}
-  @keyframes numPulse{ 0%{transform:scale(1);color:var(--text)} 35%{transform:scale(1.11);color:var(--accent)} 100%{transform:scale(1);color:var(--text)} }
+  /* Der Puls laeuft ueber die EINZELNE Eigenschaft "scale", nicht ueber
+     "transform": Die Zahl im Kopf traegt im zusammengezogenen Zustand selbst
+     ein transform:scale(...) (siehe --kopf-t). Eine Animation auf "transform"
+     hatte das waehrend des Pulses ueberschrieben -- die Zahl sprang beim
+     Abhaken von 79 % auf volle Groesse und danach zurueck. "scale" legt sich
+     dagegen ueber das transform, beides multipliziert sich. */
+  @keyframes numPulse{ 0%{scale:1;color:var(--text)} 35%{scale:1.11;color:var(--accent)} 100%{scale:1;color:var(--text)} }
   .num-pulse{display:inline-block;animation:numPulse var(--dur) var(--ease)}
 
   /* Verlaufsband: Wochentage als Zeilen, Wochen als Spalten.
@@ -1048,6 +1055,8 @@
   .stats-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 
   .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+  .tiles.zwei{grid-template-columns:repeat(2,1fr)}
+  .tile .val.pct::after{content:"%";font-size:.62em;font-weight:700;margin-left:2px;opacity:.85}
   .tile{
     background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
     padding:18px 12px 16px;text-align:center;box-shadow:var(--card-shadow);
@@ -1116,8 +1125,28 @@
     background:var(--panel-2);border:1px solid var(--line);
     color:var(--muted);font-size:12.5px;line-height:1.55}
   .card.info-offen .info-text{display:block;animation:viewIn var(--dur) var(--ease) both}
-  /* Vorsprung/Rückstand unter dem Balken: die konkrete Zahl zum Aufholen */
-  .fc-plan{margin-top:12px;text-align:center;font-size:13.5px;font-weight:700;font-variant-numeric:tabular-nums}
+  /* Hochrechnung unter dem Balken: klein, weil sie an der Quote hängt */
+  .fc-proj{margin-top:11px;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.5}
+  /* Zwei Lagen im Balken: heller Teil = Hochrechnung, kräftiger Teil = jetzt */
+  .fc-bar.zwei{position:relative}
+  .fc-bar.zwei > span{position:absolute;left:0;top:0}
+  .fc-bar.zwei > span.proj{opacity:.3}
+  /* Gesamtsicht: eine Zeile je Loop */
+  .sm-list{margin-top:14px}
+  .sm-row{display:flex;align-items:center;gap:9px;padding:8px 2px;border-top:1px solid var(--line);font-size:13px}
+  .sm-row:first-child{border-top:0}
+  .sm-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .sm-st{flex:none;color:var(--muted);font-variant-numeric:tabular-nums;font-size:12.5px}
+
+  /* ---------- "Wo stehe ich?" ---------- */
+  .stand{padding:16px 18px 15px}
+  .stand-titel{color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.2px}
+  .stand-zeile{display:flex;align-items:baseline;gap:8px;margin-top:6px;font-variant-numeric:tabular-nums}
+  .stand-zahl{font-size:38px;font-weight:800;line-height:1}
+  .stand-von{font-size:16px;color:var(--muted);font-weight:600}
+  .stand-pct{margin-left:auto;font-size:22px;font-weight:800}
+  .stand .fc-bar{margin-top:12px}
+  .stand-rest{margin-top:9px;color:var(--muted);font-size:12.5px}
 
   /* Kleine Kennzahlen nebeneinander */
   /* Feste drei Spalten gingen nicht mehr auf: Hier stehen jetzt vier Werte
@@ -1925,8 +1954,8 @@
         </div>
         <div class="opt-row">
           <div>
-            <div class="opt-title">Erfolgschancen</div>
-            <div class="opt-sub">Zeigt in der Statistik, an wie vielen Tagen pro Woche du ab jetzt dranbleiben musst</div>
+            <div class="opt-title">Schaffe ich es?</div>
+            <div class="opt-sub">Zeigt in der Statistik, an wie vielen Tagen pro Woche du ab jetzt dranbleiben musst — und wohin die letzten 30 Tage führen</div>
           </div>
           <button class="switch" id="planSwitch" role="switch" aria-checked="true"><span></span></button>
         </div>
@@ -2317,24 +2346,49 @@
   // ebenfalls truthy und würde jede einzelne Zählung stillschweigend
   // verfälschen -- so bleiben alle vorhandenen Prüfungen unberührt.
   //
-  //   h.skips = { "2026-7-14": "sick" | "except" }
+  //   h.skips = { "2026-7-14": "sick" | "except" | "rest" }
   //
   // Das Jahresziel bleibt unangetastet: Wer sich 365 Tage vorgenommen hat,
   // behält 365 als Ziel. Ausgenommene Tage werden getrennt ausgewiesen.
-  const SKIP_MAX = 20;                       // je Habit und Jahr, beide Arten zusammen
-  const SKIP_LABEL = { sick:"Krank", except:"Ausnahme" };
+  //
+  // "rest" ist der Ruhetag: eine bewusste Pause (z. B. beim Sport), kein
+  // Ausfall. Er wirkt auf Serie und alle Zahlen genau wie die anderen beiden --
+  // der Tag wird herausgenommen --, hat aber KEINEN Deckel und zählt nicht zu
+  // den 20. Wer jede Woche zwei Ruhetage braucht, käme mit 20 nicht durchs Jahr.
+  const SKIP_MAX = 20;                       // je Habit und Jahr, Krank und Ausnahme zusammen
+  const SKIP_LABEL = { sick:"Krank", except:"Ausnahme", rest:"Ruhetag" };
+  // Eine unbekannte Art (etwa aus einer Sicherung einer neueren Fassung) soll
+  // nie als "undefined" im Hinweis stehen.
+  function skipLabel(art){ return SKIP_LABEL[art] || "Ausnahme"; }
 
   function skipTypeOf(h, k){ return h.skips ? h.skips[k] : undefined; }
   function isSkipped(h, k){ return !!skipTypeOf(h, k); }
   function isSkippedDate(h, d){ return isSkipped(h, keyOf(d)); }
+  // Krank + Ausnahme: das, was gegen den Deckel von SKIP_MAX zählt.
   function skipCount(h){
     const s = h.skips;
     if(!s) return 0;
     const prefix = h.year + "-";
     let c = 0;
-    for(const k in s){ if(s[k] && k.indexOf(prefix) === 0) c++; }
+    for(const k in s){ if(s[k] && s[k] !== "rest" && k.indexOf(prefix) === 0) c++; }
     return c;
   }
+  // Ruhetage, getrennt gezählt und ohne Obergrenze.
+  function restCount(h){
+    const s = h.skips;
+    if(!s) return 0;
+    const prefix = h.year + "-";
+    let c = 0;
+    for(const k in s){ if(s[k] === "rest" && k.indexOf(prefix) === 0) c++; }
+    return c;
+  }
+  // Anzeige im Ausnahme-Panel: Ruhetage haben keine Grenze, deshalb dort nur
+  // die Zahl statt "x von 20".
+  function skipCountText(h){
+    if(skipKind === "rest"){ const r = restCount(h); return r+(r===1?" Ruhetag":" Ruhetage"); }
+    return skipCount(h)+" von "+SKIP_MAX;
+  }
+  function skipVoll(h){ return skipKind !== "rest" && skipCount(h) >= SKIP_MAX; }
   // Zählt ein Tag für die Serie? Nicht geplante und ausgenommene Tage werden
   // beide übersprungen -- sie unterbrechen nicht und verlängern nicht.
   function countsForStreak(h, d){ return isPlanned(h, d) && !isSkippedDate(h, d); }
@@ -2342,16 +2396,62 @@
     return isPlannedYMD(h,y,m,d) && !isSkipped(h, key(y,m,d));
   }
 
+  // ---------- Ab wann gibt es den Loop? ----------
+  // Tage VOR dem Start sind weder verpasst noch erfüllt -- es gab den Loop
+  // noch nicht. Sonst stünde ein im Oktober angelegter Loop sofort tief im
+  // Minus, und in den ersten 30 Januartagen zählte die Quote Tage aus dem
+  // Dezember des Vorjahres als verpasst.
+  // Start = früher von Anlegedatum und erstem Haken, nie vor dem 1.1. seines
+  // Jahres. Fehlt das Anlegedatum (ältere Sicherungen), gilt der 1.1. wie
+  // bisher. Wer nachträglich alte Tage einträgt, schiebt den Start dadurch
+  // von selbst nach vorn.
+  function startTag(h){
+    const jan1 = new Date(h.year,0,1);
+    if(!h.created) return jan1;
+    const c = new Date(h.created);
+    let st = new Date(c.getFullYear(), c.getMonth(), c.getDate());
+    const days = h.days||{};
+    for(const k in days){
+      if(!days[k]) continue;
+      const t = k.split("-");
+      if(+t[0] !== h.year) continue;
+      const d = new Date(+t[0], +t[1], +t[2]);
+      if(d < st) st = d;
+    }
+    if(st < jan1) st = jan1;
+    const dez31 = new Date(h.year,11,31);
+    return st > dez31 ? dez31 : st;
+  }
+
   // Rechte Seite der Kopfzeile. Ausgenommene Tage stehen hier getrennt, weil
   // das Ziel bewusst bei 365 bleibt -- ohne den Hinweis sähe es so aus, als
   // hätte man die Tage schlicht verpasst.
-  function goalRestText(h, target, done){
+  function goalRestParts(h, target, done){
     const rest = Math.max(0, target-done);
-    const aus = skipCount(h);
-    return "noch "+rest+" Tage" + (aus ? " · "+aus+" ausgenommen" : "");
+    const aus = skipCount(h), ruhe = restCount(h);
+    return {
+      kern: "noch "+rest+(rest===1?" Tag":" Tage"),
+      extra: (aus ? " · "+aus+" ausgenommen" : "") +
+             (ruhe ? " · "+ruhe+(ruhe===1?" Ruhetag":" Ruhetage") : "")
+    };
+  }
+  function goalRestText(h, target, done){
+    const p = goalRestParts(h, target, done);
+    return p.kern + p.extra;
+  }
+  // Für die schmale Kopfzeile: Der Zusatz steckt in einem eigenen Element, das
+  // am Handy wegfällt. Dort reichte der Platz schon für "· 4 ausgenommen" nicht
+  // (es stand nur "· 4 a…"), und mit Ruhetagen wäre es noch länger. Zu lesen
+  // sind die Zahlen weiter in "Wo stehe ich?" der Statistik und im Panel.
+  function goalRestHtml(h, target, done){
+    const p = goalRestParts(h, target, done);
+    return p.kern + (p.extra ? '<span class="rest-extra">'+p.extra+'</span>' : "");
   }
 
-  function skipHintText(voll){
+  function skipHintText(voll, art){
+    if(art === "rest") return "Tippe die Tage an, an denen du bewusst pausierst. Sie unterbrechen deine "+
+                              "Serie nicht, zählen nicht gegen dich und haben keine Obergrenze. "+
+                              "Nochmal antippen nimmt es zurück.";
     if(voll) return "Alle "+SKIP_MAX+" Ausnahmen für dieses Jahr sind vergeben. "+
                     "Nimm eine zurück, um eine neue einzutragen.";
     return "Tippe die Tage an, die nicht zählen sollen. Sie unterbrechen deine "+
@@ -2367,7 +2467,7 @@
       delete h.skips[k];
       return { weg:true, art:alt };
     }
-    if(skipCount(h) >= SKIP_MAX) return { voll:true };
+    if(art !== "rest" && skipCount(h) >= SKIP_MAX) return { voll:true };
     // Ein ausgenommener Tag kann nicht gleichzeitig erfüllt sein. Der Haken
     // wird entfernt, nicht nur überdeckt -- sonst käme er beim Zurücknehmen
     // der Ausnahme unerwartet wieder zum Vorschein.
@@ -2387,7 +2487,7 @@
       h.skips = h.skips || {};
       if(setzen){
         if(h.skips[k]) return;
-        if(skipCount(h) >= SKIP_MAX) return;   // je Habit eigener Deckel
+        if(art !== "rest" && skipCount(h) >= SKIP_MAX) return;   // je Habit eigener Deckel, nicht für Ruhetage
         if(h.days && h.days[k]) delete h.days[k];
         h.skips[k] = art; n++;
       }else{
@@ -2415,10 +2515,16 @@
       return d;
     };
 
-    let cursor = zurueckAufGeplant(new Date(realNow.getFullYear(), realNow.getMonth(), realNow.getDate()));
+    const heuteTag = new Date(realNow.getFullYear(), realNow.getMonth(), realNow.getDate());
+    let cursor = zurueckAufGeplant(new Date(heuteTag));
     // Ein heute noch offener Tag soll die Serie nicht sofort auf 0 setzen --
     // deshalb in dem Fall beim letzten geplanten Tag davor weitermachen.
+    // Die Nachsicht gilt aber nur für HEUTE. War der letzte geplante Tag ein
+    // früherer und ist offen geblieben, ist die Serie gerissen -- sonst stünde
+    // sie bei einem Mo-Fr-Loop nach einem verpassten Freitag das ganze
+    // Wochenende noch.
     if(cursor >= yStart && !isDone(cursor)){
+      if(cursor.getTime() !== heuteTag.getTime()) return 0;
       cursor.setDate(cursor.getDate()-1);
       cursor = zurueckAufGeplant(cursor);
       if(cursor < yStart || !isDone(cursor)) return 0;
@@ -2578,6 +2684,10 @@
   // sie stehen ja gerade nicht an.
   function heuteStandZahlen(){
     const t = heute();
+    // "Heute" gibt es nur im laufenden Jahr. In einem anderen Jahr würde der
+    // heutige Tag sonst in einen Loop dieses Jahres geschrieben, wo er im
+    // Kalender nirgends erscheint, aber mitgezählt wird.
+    if(currentYear !== t.getFullYear()) return { geplant:0, erledigt:0, fremdesJahr:true };
     let geplant = 0, erledigt = 0;
     habitsOfYear(currentYear).forEach(h=>{
       if(!countsForStreak(h, t)) return;
@@ -2594,7 +2704,7 @@
     zeile.classList.toggle("leer", z.geplant === 0);
     zeile.classList.toggle("fertig", z.geplant > 0 && z.erledigt === z.geplant);
     if(z.geplant === 0){
-      el.textContent = "steht nichts an";
+      el.textContent = z.fremdesJahr ? "gilt nur im Jahr "+heute().getFullYear() : "steht nichts an";
     }else if(z.erledigt === z.geplant){
       // Gruen ist hier erlaubt: Das ist ein Zustand, kein Messwert.
       el.textContent = "alles erledigt";
@@ -3012,7 +3122,7 @@
     const kopfblock = document.querySelector(".goal-wrap");
     if(kopfblock) kopfblock.classList.toggle("erreicht", done >= target);
     document.getElementById("goalPctText").textContent = pct+"%";
-    document.getElementById("goalRest").textContent = goalRestText(h, target, done);
+    document.getElementById("goalRest").innerHTML = goalRestHtml(h, target, done);
     const badge = document.getElementById("streakBadge");
     badge.style.display = streak>0 ? "inline-flex" : "none";
     animateNumber(document.getElementById("streakVal"), streak);
@@ -3145,7 +3255,7 @@
           // ohnehin ausgeblendet) -- sonst gäbe es beim ersten Häkchen kein
           // Element, an dem die Animation hängen könnte.
           flameHTML(Math.max(1,streak),20,"streakFlame")+'<b id="streakVal">'+streak+'</b></span>'+
-        '<span class="goal-rest" id="goalRest">'+goalRestText(h, target, done)+'</span>'+
+        '<span class="goal-rest" id="goalRest">'+goalRestHtml(h, target, done)+'</span>'+
       '</div>'+
       '<div class="goal-bar'+(done>=target?" voll":"")+'"><span id="goalBarFill" style="transform:scaleX('+(pct/100)+');'+gradientStyle(h.color)+'"></span>'+
         // Laeuft nur bei der Feier -- liegt sonst still und kostet nichts.
@@ -3165,8 +3275,7 @@
 
     ensureCalMonth();
 
-    const benutzt = skipCount(h);
-    const voll = benutzt >= SKIP_MAX;
+    const voll = skipVoll(h);
 
     html += '<div class="cal-wrap">'+
       '<div class="skip-row" style="margin-bottom:16px">'+
@@ -3184,8 +3293,9 @@
           '<div class="seg mini" id="skipKindSwitch" style="margin-bottom:0"><span class="seg-thumb"></span>'+
             '<button data-kind="sick"'+(skipKind==="sick"?' class="sel"':'')+'>Krank</button>'+
             '<button data-kind="except"'+(skipKind==="except"?' class="sel"':'')+'>Ausnahme</button>'+
+            '<button data-kind="rest"'+(skipKind==="rest"?' class="sel"':'')+'>Ruhetag</button>'+
           '</div>'+
-          '<span class="skip-count'+(voll?" voll":"")+'" id="skipCount">'+benutzt+' von '+SKIP_MAX+'</span>'+
+          '<span class="skip-count'+(voll?" voll":"")+'" id="skipCount">'+skipCountText(h)+'</span>'+
         '</div>'+
         '<div class="skip-row">'+
           '<label class="skip-all">Für alle Loops'+
@@ -3193,7 +3303,7 @@
           '</label>'+
           '<button class="btn" id="skipDone" style="margin-left:auto;padding:6px 14px;font-size:12.5px">Fertig</button>'+
         '</div>'+
-        '<div class="skip-hint" id="skipHint">'+skipHintText(voll)+'</div>'+
+        '<div class="skip-hint" id="skipHint">'+skipHintText(voll, skipKind)+'</div>'+
       '</div>';
 
     html += (calMode==="year") ? buildYear(h) : (buildBand(h) + buildMonthPages(h, calMonth, wave));
@@ -3211,15 +3321,14 @@
 
   // ---------- Ausnahme-Modus ----------
   function updateSkipPanel(h){
-    const benutzt = skipCount(h);
-    const voll = benutzt >= SKIP_MAX;
+    const voll = skipVoll(h);
     const z = document.getElementById("skipCount");
     if(z){
-      z.textContent = benutzt+" von "+SKIP_MAX;
+      z.textContent = skipCountText(h);
       z.classList.toggle("voll", voll);
     }
     const hint = document.getElementById("skipHint");
-    if(hint) hint.textContent = skipHintText(voll);
+    if(hint) hint.textContent = skipHintText(voll, skipKind);
   }
 
   function wireSkipPanel(content, h){
@@ -3249,10 +3358,13 @@
       artSchalter.querySelectorAll("button").forEach(x=>x.classList.toggle("sel", x===b));
       positionSegThumb(artSchalter);
       // "Krank" betrifft in aller Regel alle Habits, eine Ausnahme meist nur
-      // diesen einen. Die Vorauswahl folgt dem, bleibt aber änderbar.
+      // diesen einen, ein Ruhetag gehört zu einem Loop (dem Sport). Die
+      // Vorauswahl folgt dem, bleibt aber änderbar.
       skipAll = (skipKind === "sick");
       const sw = document.getElementById("skipAllSw");
       if(sw) sw.setAttribute("aria-checked", skipAll ? "true" : "false");
+      // Zähler und Hinweis hängen an der Art: Ruhetage haben keine Grenze.
+      updateSkipPanel(h);
     });
 
     const alleSchalter = content.querySelector("#skipAllSw");
@@ -3432,7 +3544,8 @@
         // Ausnahme-Modus: Antippen trägt aus oder nimmt es zurück, hakt aber
         // nichts ab.
         if(skipMode){
-          const war = isSkipped(h, k);
+          const warArt = skipTypeOf(h, k);
+          const war = !!warArt;
           let n = 1;
           if(skipAll){
             n = toggleSkipAll(k, skipKind, !war);
@@ -3440,16 +3553,20 @@
             const r = toggleSkip(h, k, skipKind);
             if(r.voll){ toast("Alle "+SKIP_MAX+" Ausnahmen sind vergeben."); return; }
           }
-          if(n === 0){ toast("Alle "+SKIP_MAX+" Ausnahmen sind vergeben."); return; }
+          if(n === 0){
+            toast(skipKind === "rest" ? "Hier gab es nichts einzutragen." : "Alle "+SKIP_MAX+" Ausnahmen sind vergeben.");
+            return;
+          }
           save();
           skipCalWave = true;
           renderMain();
           renderSidebar();
           updateSkipPanel(h);
           toast(war
-            ? (skipAll && n>1 ? n+" Ausnahmen zurückgenommen." : "Ausnahme zurückgenommen.")
-            : (skipAll && n>1 ? SKIP_LABEL[skipKind]+" für "+n+" Loops eingetragen."
-                              : SKIP_LABEL[skipKind]+" eingetragen."));
+            ? (skipAll && n>1 ? n+(warArt==="rest" ? " Ruhetage" : " Ausnahmen")+" zurückgenommen."
+                              : (warArt==="rest" ? "Ruhetag" : "Ausnahme")+" zurückgenommen.")
+            : (skipAll && n>1 ? skipLabel(skipKind)+" für "+n+" Loops eingetragen."
+                              : skipLabel(skipKind)+" eingetragen."));
           return;
         }
 
@@ -3457,7 +3574,7 @@
         // zurücknehmen, dann abhaken. Sonst wären zwei Zustände gleichzeitig
         // erreichbar, die sich widersprechen.
         if(isSkipped(h, k)){
-          toast(SKIP_LABEL[skipTypeOf(h,k)]+" – dieser Tag zählt nicht. Über „⊘ Ausnahme“ zurücknehmen.");
+          toast(skipLabel(skipTypeOf(h,k))+" – dieser Tag zählt nicht. Über „⊘ Ausnahme“ zurücknehmen.");
           return;
         }
 
@@ -3639,7 +3756,7 @@
       raster += '<button class="mcell'+(done?" done":"")+(art?" skip skip-"+art:"")+
         (sameDay(d,t)?" today":"")+'"'+
         (style?' style="'+style+'"':'')+' data-k="'+k+'"'+
-        (art?' title="'+SKIP_LABEL[art]+' – zählt nicht"':'')+'>'+
+        (art?' title="'+skipLabel(art)+' – zählt nicht"':'')+'>'+
         d.getDate()+'<span class="dt"></span></button>';
     }
     raster += '</div>';
@@ -3731,17 +3848,25 @@
   // Gleitendes Fenster: für jeden Tag der Anteil erfüllter Tage in den letzten
   // "win" Tagen. Deshalb wird "win-1" Tage vor dem Startdatum begonnen -- sonst
   // hätte der erste Punkt ein unvollständiges Fenster und wäre künstlich niedrig.
+  //
+  // Gezählt wird, was ZÄHLT: geplante, nicht ausgenommene Tage ab dem Start des
+  // Loops. Tage davor (auch aus dem Vorjahr) gab es nicht, und ein Krank-Tag ist
+  // kein verpasster Tag -- so rechnen alle anderen Karten auch. Punkte vor dem
+  // Start des frühesten Loops entfallen ganz, statt als 0 % eine Linie vom
+  // Boden aufsteigen zu lassen.
   function rollingSeries(habits, from, to, win){
+    if(!habits.length) return [];
+    const starts = habits.map(startTag);
+    const erster = new Date(Math.min.apply(null, starts.map(Number)));
     const start = new Date(from); start.setDate(start.getDate()-(win-1));
     const erledigt = [], geplant = [], dates = [];
     const cursor = new Date(start);
     while(cursor <= to){
       const k = key(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
       let e = 0, g = 0;
-      habits.forEach(h=>{
-        // Nicht geplante Tage zählen weder oben noch unten mit -- sonst würde
-        // ein Habit, der nur Mo-Fr läuft, jedes Wochenende die Quote drücken.
-        if(!isPlanned(h, cursor)) return;
+      habits.forEach((h,i)=>{
+        if(cursor < starts[i]) return;
+        if(!countsForStreak(h, cursor)) return;
         g++;
         if(h.days && h.days[k]) e++;
       });
@@ -3753,26 +3878,33 @@
     for(let i=0;i<erledigt.length;i++){
       se += erledigt[i]; sg += geplant[i];
       if(i >= win){ se -= erledigt[i-win]; sg -= geplant[i-win]; }
-      if(i >= win-1) out.push({ date: dates[i], pct: sg ? (se/sg)*100 : 0 });
+      if(i >= win-1 && dates[i] >= erster) out.push({ date: dates[i], pct: sg ? (se/sg)*100 : 0 });
     }
     return out;
   }
 
   // Anteil erfüllter Tage je Monat (bei "Alle Habits" über alle Habits gemittelt).
+  // Nur vergangene Tage ab dem Start des Loops, ohne Ausnahmen -- ein laufender
+  // Monat wird an den Tagen gemessen, die schon da waren, nicht am ganzen
+  // Monat (sonst stand der Oktober am 11. bei "alles erledigt" auf 35 %).
+  // Ein Monat ohne einen einzigen zählenden Tag ergibt null, nicht 0 %.
   function monthlySeries(habits, year){
-    const out = [];
+    const out = [], t = heute();
+    const starts = habits.map(startTag);
     for(let m=0;m<12;m++){
       const dim = daysInMonth(year,m);
       let e = 0, g = 0;
-      habits.forEach(h=>{
+      habits.forEach((h,i)=>{
         const days = h.days||{};
         for(let d=1;d<=dim;d++){
-          if(!isPlannedYMD(h, year, m, d)) continue;
+          const dt = new Date(year,m,d);
+          if(dt > t || dt < starts[i]) continue;
+          if(!countsForStreakYMD(h, year, m, d)) continue;
           g++;
           if(days[key(year,m,d)]) e++;
         }
       });
-      out.push(g ? e/g*100 : 0);
+      out.push(g ? e/g*100 : null);
     }
     return out;
   }
@@ -3914,7 +4046,9 @@
           pause = 0; run++; schonMal = true;
         }else{
           if(run>0) laeufe.push(run);
-          run = 0; pause++;
+          // Die Tage vor dem ersten Haken sind keine Pause -- es hatte noch
+          // nichts begonnen.
+          run = 0; if(schonMal) pause++;
         }
       }
     }
@@ -4026,44 +4160,6 @@
       wackelt: genug && !imRhythmus,
       quoteZuNiedrig: gestartet && !genug && !imRhythmus
     };
-  }
-
-  // ---------- Vorsprung oder Rückstand gegenüber dem Plan ----------
-  // Beantwortet die eigentliche Frage dieser App: Komme ich bis zum Jahresende
-  // an mein Ziel? Nicht "wie viele Tage am Stück", sondern "liege ich vorn oder
-  // hinten".
-  //
-  // Fällig ist der Anteil des Ziels, der dem bereits verstrichenen Teil der
-  // geplanten Tage entspricht. Bei 150 Tagen Ziel und 62 % des Jahres herum
-  // sind 93 fällig -- wer 99 hat, liegt 6 vor.
-  //
-  // Ausgenommene Tage zählen weder oben noch unten: An einem Tag, an dem man
-  // krank war, war nichts fällig.
-  function planStand(h){
-    const t = heute();
-    if(h.year !== t.getFullYear()) return null;   // abgelaufene Jahre sagen nichts
-    const ziel = targetFor(h);
-    if(ziel <= 0) return null;
-
-    let bisHeute = 0, gesamt = 0;
-    for(let m=0;m<12;m++){
-      const dim = daysInMonth(h.year, m);
-      for(let d=1; d<=dim; d++){
-        if(!countsForStreakYMD(h, h.year, m, d)) continue;
-        gesamt++;
-        if(new Date(h.year, m, d) <= t) bisHeute++;
-      }
-    }
-    if(gesamt === 0) return null;
-    const faellig = ziel * (bisHeute/gesamt);
-    return { vorsprung: Math.round(doneCount(h) - faellig), faellig: Math.round(faellig) };
-  }
-
-  // Summe über mehrere Habits -- für die Gesamtübersicht.
-  function planStandScope(scope){
-    let summe = 0, gilt = false;
-    scope.forEach(x=>{ const p = planStand(x); if(p){ summe += p.vorsprung; gilt = true; } });
-    return gilt ? { vorsprung: summe } : null;
   }
 
   // ---------- Jahresvergleich ----------
@@ -4181,39 +4277,42 @@
     if(karte) karte.classList.toggle("info-offen");
   });
 
-  function planText(v){
-    if(v >= 1) return v+" "+(v===1?"Tag":"Tage")+" vor Plan";
-    if(v <= -1) return (-v)+" "+(v===-1?"Tag":"Tage")+" hinter Plan";
-    return "genau im Plan";
-  }
-  function planFarbe(v){
-    if(v >= 1) return "var(--good)";
-    if(v <= -1) return "#ffb454";   // gedämpftes Gelb: hinten zu liegen ist kein Scheitern
-    return "var(--muted)";
-  }
-
   // Hochrechnung: die Quote der letzten 30 Tage auf die verbleibenden geplanten
   // Tage angewendet. Bewusst nur die letzten 30 Tage -- ein Jahresschnitt würde
   // eine frische Verbesserung oder einen Durchhänger verwischen.
+  //
+  // Je Loop gerechnet und erst dann zusammengezählt: Die Prognose für mehrere
+  // Loops ist die Summe der Einzelprognosen, nicht eine gemeinsame Quote mal
+  // alle Resttage (das wich ab, sobald Loops verschieden lange Reste oder
+  // verschieden gute Quoten hatten).
+  // Das Fenster beginnt frühestens am Start des Loops (siehe startTag): Bei
+  // einem neuen Loop reicht die Quote deshalb über weniger als 30 Tage --
+  // "tage" sagt, über wie viele, "g" über wie viele ZÄHLENDE Tage.
   function forecast(scope){
     const t = heute(), jahr = scope[0].year;
     const yEnd = new Date(jahr,11,31);
     if(t > yEnd || t < new Date(jahr,0,1)) return null;
-    const von = new Date(t); von.setDate(von.getDate()-29);
-    let e=0, g=0, rest=0;
+    let e=0, g=0, rest=0, prognose=0, bisher=0, ziel=0, tage=0;
     scope.forEach(h=>{
-      let c = new Date(von);
+      const start = startTag(h);
+      const von = new Date(t); von.setDate(von.getDate()-29);
+      if(von < start) von.setTime(start.getTime());
+      let he=0, hg=0, hrest=0;
       // Ausgenommene Tage fallen aus Zähler UND Nenner: Krankheit sagt nichts
       // darüber aus, wie gut jemand durchhält, und darf die Hochrechnung
       // weder schönen noch verschlechtern.
-      while(c <= t){ if(countsForStreak(h,c)){ g++; if((h.days||{})[keyOf(c)]) e++; } c.setDate(c.getDate()+1); }
-      c = new Date(t); c.setDate(c.getDate()+1);
-      while(c <= yEnd){ if(countsForStreak(h,c)) rest++; c.setDate(c.getDate()+1); }
+      for(let c = new Date(von); c <= t; c.setDate(c.getDate()+1)){
+        if(countsForStreak(h,c)){ hg++; if((h.days||{})[keyOf(c)]) he++; }
+      }
+      for(let c = new Date(t.getFullYear(), t.getMonth(), t.getDate()+1); c <= yEnd; c.setDate(c.getDate()+1)){
+        if(countsForStreak(h,c)) hrest++;
+      }
+      const hb = doneCount(h);
+      e += he; g += hg; rest += hrest; bisher += hb; ziel += targetFor(h);
+      prognose += Math.round(hb + (hg ? he/hg : 0)*hrest);
+      tage = Math.max(tage, Math.round((t - von)/86400000) + 1);
     });
-    const quote = g ? e/g : 0;
-    const bisher = scope.reduce((a,x)=>a+doneCount(x), 0);
-    const ziel = scope.reduce((a,x)=>a+targetFor(x), 0);
-    return { quote:quote, prognose: Math.round(bisher + quote*rest), ziel:ziel, rest:rest, bisher:bisher };
+    return { quote: g ? e/g : 0, hatQuote: g > 0, g:g, tage:tage, prognose:prognose, ziel:ziel, rest:rest, bisher:bisher };
   }
 
   // ---------- Statistik: Darstellung ----------
@@ -4221,10 +4320,15 @@
     return '<div class="mini-stat"><div class="ms-val">'+wert+'</div><div class="ms-lbl">'+label+'</div></div>';
   }
 
-  function statTile(icon, val, label, color, i){
+  // val === null zeigt einen Strich (kein Wert) und zählt nicht hoch;
+  // prozent hängt ein %-Zeichen per CSS an -- animateNumber liest und schreibt
+  // den Text der Zahl und käme mit einem "%" darin durcheinander.
+  function statTile(icon, val, label, color, i, prozent){
     return '<div class="tile" style="--tint:'+color+';--d:'+(i*70)+'ms">'+
       '<div class="ic">'+icon+'</div>'+
-      '<div class="val" data-count="'+val+'">0</div>'+
+      (val === null
+        ? '<div class="val">–</div>'
+        : '<div class="val'+(prozent?' pct':'')+'" data-count="'+val+'">0</div>')+
       '<div class="lbl">'+label+'</div></div>';
   }
 
@@ -4389,6 +4493,7 @@
   // Zahlen in den Kacheln von 0 hochzählen, leicht versetzt
   function startTileCounts(root){
     root.querySelectorAll(".tile .val").forEach((el,i)=>{
+      if(!el.hasAttribute("data-count")) return;
       const to = parseInt(el.getAttribute("data-count"), 10) || 0;
       if(!animOn){ el.textContent = to; return; }
       el.textContent = "0";
@@ -4466,49 +4571,62 @@
       '<button data-scope="all"'+(all?' class="sel"':"")+'>Alle Loops'+(habits.length>1?" ("+habits.length+")":"")+'</button>'+
       '</div></div>';
 
-    // ---- Die drei Kacheln: der Schnellblick, ganz oben ----
-    // Bewusst NICHT mehr zwei Serien von dreien. Ganz oben stünde damit als
-    // Erstes das, wovon Yearloop sich absetzt. Die mittlere Kachel beantwortet
-    // jetzt die Frage der App -- liege ich vorn oder hinten -- und holt diese
-    // Zahl gleichzeitig aus dem Fließtext der Erfolgschancen heraus.
-    const ps0 = all ? planStandScope(scope) : planStand(scope[0]);
-    let mittlere;
-    if(ps0){
-      const v = ps0.vorsprung;
-      // Bewusst in der Loop-Farbe, NICHT gruen bzw. gelb. Farbe ist in dieser
-      // App eine Aussage ueber einen Zustand -- gruen heisst "erreicht",
-      // gelb heisst "wackelt". Vor Plan zu liegen ist keines von beidem,
-      // sondern ein laufender Messwert. Die Richtung steht im Text darunter,
-      // dafuer braucht es keine zweite Farbe.
-      mittlere = statTile(iconSvg("ziel",20), Math.abs(v),
-        v >= 1 ? (Math.abs(v)===1 ? "Tag vor Plan" : "Tage vor Plan")
-               : (v <= -1 ? (Math.abs(v)===1 ? "Tag hinter Plan" : "Tage hinter Plan")
-                          : "genau im Plan"),
-        color, 1);
-    }else{
-      // Abgelaufene Jahre kennen keinen Plan mehr -- dann der Anteil am Ziel.
-      const zielGes = scope.reduce((a,x)=>a+targetFor(x), 0);
-      mittlere = statTile(iconSvg("ziel",20),
-        zielGes ? Math.round(totalDone/zielGes*100) : 0, "Prozent vom Ziel", color, 1);
-    }
-
-    // Dritte Kachel: In der Gesamtsicht die perfekten Tage statt einer Serie.
-    // "Längste aktuelle Serie" war dort das Maximum über alle Loops -- eine
-    // Zahl, die zu EINEM Loop gehört, ohne zu sagen zu welchem. Perfekte Tage
-    // gehören dagegen allen zusammen.
-    const dritte = all
-      // Stern statt Haken: Die erste Kachel trägt schon einen Haken, zwei
-      // gleiche Zeichen nebeneinander liest man nicht auseinander. Und ein
-      // perfekter Tag ist eine Auszeichnung, kein Abhaken.
-      ? statTile(iconSvg("stern",20), perfectDays(scope), "Tage, an denen alles saß", color, 2)
-      : statTile(curStreak>0 ? flameHTML(curStreak,26) : ICONS.flame,
-                 curStreak, "Aktuelle Serie", color, 2);
-
-    let kacheln = '<div class="tiles reveal" data-job="tiles">'+
-      statTile(ICONS.check, totalDone, all ? "Tage insgesamt erfüllt" : "Tage erfüllt", color, 0)+
-      mittlere+
-      dritte+
+    // ---- Ganz oben: "Wo stehe ich?" und zwei Kacheln ----
+    // Die erste Frage der Statistik ist der Stand: wie viel vom Ziel ist
+    // geschafft. Darunter zwei Kacheln -- die laufende Serie und die Quote der
+    // letzten 30 Tage. "Tage vor/hinter Plan" ist entfallen: Die Zahl hing am
+    // ganzen Jahr und stand bei spät angelegten Loops sofort tief im Minus, und
+    // als Summe über mehrere Loops sagte sie nichts.
+    const zielGes = scope.reduce((a,x)=>a+targetFor(x), 0);
+    const pctGes = zielGes ? Math.round(totalDone/zielGes*100) : 0;
+    const erreichtAnz = scope.filter(x=>doneCount(x) >= targetFor(x)).length;
+    const alleErreicht = all ? erreichtAnz === scope.length : totalDone >= zielGes;
+    const standFarbe = alleErreicht ? "#3ecf8e" : color;
+    const standRest = all
+      ? 'Zusammen '+totalDone+' von '+zielGes+' Tagen'
+      : (totalDone >= zielGes
+          ? 'Ziel erreicht'+(totalDone > zielGes ? ' · '+(totalDone-zielGes)+' darüber' : '')
+          : goalRestText(scope[0], zielGes, totalDone));
+    const stand = '<div class="card stand reveal">'+
+      '<div class="stand-titel">Wo stehe ich?</div>'+
+      '<div class="stand-zeile">'+
+        '<span class="stand-zahl">'+(all ? erreichtAnz : totalDone)+'</span>'+
+        '<span class="stand-von">'+(all
+          ? 'von '+scope.length+(scope.length===1 ? ' Ziel erreicht' : ' Zielen erreicht')
+          : 'von '+zielGes)+'</span>'+
+        '<span class="stand-pct">'+pctGes+'%</span>'+
+      '</div>'+
+      '<div class="fc-bar"><span style="width:'+Math.min(100,pctGes)+'%;'+gradientStyle(standFarbe)+'"></span></div>'+
+      '<div class="stand-rest">'+standRest+'</div>'+
       '</div>';
+
+    // Die Quote steht unabhängig vom Schalter "Schaffe ich es?" in den
+    // Einstellungen -- der blendet nur die Karte aus.
+    const fcK = forecast(scope);
+    const laufendesJahr = currentYear === heute().getFullYear();
+    let kachelA;
+    if(all){
+      // Stern statt Haken: ein perfekter Tag ist eine Auszeichnung, kein Abhaken.
+      kachelA = statTile(iconSvg("stern",20), perfectDays(scope), "Tage, an denen alles saß", color, 0);
+    }else if(laufendesJahr){
+      kachelA = statTile(curStreak>0 ? flameHTML(curStreak,26) : ICONS.flame,
+                         curStreak, "Aktuelle Serie", color, 0);
+    }else{
+      kachelA = statTile(ICONS.flame, bestStreak,
+                         bestStreak===1 ? "Tag längste Serie" : "Tage längste Serie", color, 0);
+    }
+    let kachelB;
+    if(fcK){
+      kachelB = statTile(iconSvg("ziel",20), fcK.hatQuote ? Math.round(fcK.quote*100) : null,
+        fcK.tage >= 30 ? "Quote der letzten 30 Tage" : "Quote seit dem Start ("+fcK.tage+(fcK.tage===1?" Tag":" Tage")+")",
+        color, 1, true);
+    }else{
+      // Abgelaufene Jahre haben keine "letzten 30 Tage" mehr.
+      const bmT = bestMonth(scope, currentYear);
+      kachelB = statTile(iconSvg("stern",20), bmT.anzahl>0 ? bmT.anzahl : null,
+        bmT.anzahl>0 ? "Tage im besten Monat ("+MONTHS_SHORT[bmT.monat]+")" : "bester Monat", color, 1);
+    }
+    let kacheln = '<div class="tiles zwei reveal" data-job="tiles">'+kachelA+kachelB+'</div>';
 
     let oben = '<div class="card reveal" data-job="chart">'+
       '<div class="card-head"><div>'+
@@ -4527,11 +4645,16 @@
         '<div class="card-sub">Anteil erfüllter Tage je Monat</div>'+
       '</div></div>'+
       '<div class="mbars">'+ months.map((p,i)=>
-        '<div class="mbar" title="'+MONTHS[i]+': '+Math.round(p)+'%">'+
-          '<div class="pctv">'+Math.round(p)+'%</div>'+
-          '<div class="track"><span class="fill" data-h="'+p.toFixed(1)+'" style="'+gradientStyle(color)+'"></span></div>'+
-          '<div class="cap">'+MONTHS_SHORT[i]+'</div>'+
-        '</div>').join("")+
+        // null = noch kein zählender Tag (Zukunft oder vor dem Start): leer,
+        // nicht 0 %.
+        p === null
+          ? '<div class="mbar leer" title="'+MONTHS[i]+': noch keine Tage"><div class="pctv">–</div>'+
+            '<div class="track"></div><div class="cap">'+MONTHS_SHORT[i]+'</div></div>'
+          : '<div class="mbar" title="'+MONTHS[i]+': '+Math.round(p)+'%">'+
+              '<div class="pctv">'+Math.round(p)+'%</div>'+
+              '<div class="track"><span class="fill" data-h="'+p.toFixed(1)+'" style="'+gradientStyle(color)+'"></span></div>'+
+              '<div class="cap">'+MONTHS_SHORT[i]+'</div>'+
+            '</div>').join("")+
       '</div></div>';
 
     // ---- Wochentage ----
@@ -4572,108 +4695,134 @@
         '</div></div>';
     }
 
-    // ---- Hochrechnung aufs Jahresende (in den Einstellungen abschaltbar) ----
-    // Steht bewusst GANZ OBEN: Die Frage dieser App ist "komme ich bis zum
-    // Jahresende an mein Ziel", nicht "wie viele Tage am Stück". Serien sind
-    // bei einem Ziel wie "150x Sport im Jahr" ohnehin wenig aussagekräftig.
+    // ---- Schaffe ich es? (in den Einstellungen abschaltbar) ----
+    // Steht bewusst weit oben: Die Frage dieser App ist "komme ich bis zum
+    // Jahresende an mein Ziel", nicht "wie viele Tage am Stück".
+    //
+    // Die große Aussage ist "an X von Y Tagen pro Woche ab jetzt". Sie hängt nur
+    // an dem, was fehlt, und an den geplanten Tagen, die noch kommen -- nicht an
+    // der Quote, ist also auch am Jahresanfang und bei neuen Loops belastbar.
+    // Die Hochrechnung steht klein darunter, weil sie an der Quote hängt und
+    // erst mit einer Woche Daten etwas taugt. Beim erreichten Ziel ändert die
+    // Karte nicht mehr die Bedeutung der großen Zahl, sondern sagt "Ja".
     let hochrechnung = "";
-    const fc = planOn ? forecast(scope) : null;
+    const fc = planOn ? fcK : null;
     if(fc){
-      const erreicht = fc.bisher >= fc.ziel;
-      const pctQ = Math.round(fc.quote*100);
-      // Wie viele der verbleibenden geplanten Tage sind noch nötig? Daraus
-      // wird die Angabe "an X von 7 Tagen", die man tatsächlich umsetzen kann.
       const noetig = Math.max(0, fc.ziel - fc.bisher);
-      const quoteNoetig = fc.rest > 0 ? noetig/fc.rest : 0;
-      const proWoche = Math.min(7, Math.ceil(quoteNoetig*7));
-      const machbar = fc.rest >= noetig;
-      const vorPlan = quoteNoetig <= fc.quote;
+      const erreicht = fc.bisher >= fc.ziel;
+      let sub, row, bar = "", unter = "", info = "", knopf = "";
 
-      let kopf, text, farbe, zusatz = "";
-      if(erreicht){
-        kopf = fc.bisher;
-        farbe = "var(--good)";
-        text = '<b style="color:var(--good)">Ziel erreicht.</b><br>'+
-               'Du bist '+(fc.bisher-fc.ziel)+' Tage über deinem Ziel von '+fc.ziel+'.';
-      }else if(!machbar){
-        kopf = fc.prognose;
-        farbe = "#ff8a8a";
-        text = 'von '+fc.ziel+' zum Jahresende<br>'+
-               '<span style="color:#ff8a8a">Ziel nicht mehr erreichbar.</span>';
-      }else{
-        kopf = fc.prognose;
-        // Nur "erreicht" ist gruen. Vorne zu liegen ist noch kein Zustand,
-        // sondern ein Zwischenstand -- die Zahl bleibt in der Loop-Farbe.
-        farbe = color;
-        // Wochen sind zum Planen zu klein. Bei einem Ziel wie "150x Sport"
-        // denkt man in Monaten -- deshalb steht die Zahl gleich daneben.
-        // Gerechnet über die verbleibenden KALENDERtage, nicht die geplanten:
-        // "Tage im Monat" meint Kalendermonate.
-        const restKal = Math.max(1, Math.round((new Date(currentYear,11,31) - heute())/86400000));
-        const proMonat = Math.max(1, Math.round(noetig/(restKal/30.44)));
-        // Sichtbar bleibt nur die Handlungsanweisung. "Noch X geplante Tage,
-        // dir fehlen Y" und die bisherige Quote stehen jetzt im "i" -- das sind
-        // Herleitungen, keine Anweisungen.
-        text = 'von '+fc.ziel+' zum Jahresende<br>'+
-               '<span style="color:'+(vorPlan?"var(--good)":"var(--muted)")+'">'+
-               '<b>Ab jetzt an '+proWoche+' von 7 Tagen</b> — rund '+proMonat+' im Monat.</span>';
-        zusatz = 'Dir fehlen noch <b>'+noetig+'</b> von '+fc.ziel+', und es sind noch '+
-                 fc.rest+' geplante Tage übrig. Bisher schaffst du '+
-                 (fc.quote*7).toFixed(1).replace(".",",")+' Tage pro Woche.';
-      }
+      // Über wie viele Tage die Quote gerechnet ist, in Worten
+      const basis = fc.tage >= 30 ? "wie in den letzten 30 Tagen" : "wie seit dem Start";
+      const projZeile = ()=> (!fc.hatQuote || fc.g < 7)
+        ? 'Für eine Hochrechnung ist es noch zu früh — sie braucht rund eine Woche Daten.'
+        : 'Läuft es '+basis+', landest du bei etwa <b style="color:'+(fc.prognose>=fc.ziel?"var(--good)":"var(--text)")+
+          '">'+fc.prognose+'</b> von '+fc.ziel+'.';
+      const projBalken = (farbe, jetztPct)=> {
+        const proj = (fc.hatQuote && fc.g >= 7) ? Math.min(100, Math.round(fc.prognose/fc.ziel*100)) : null;
+        return '<div class="fc-bar'+(proj!==null?' zwei':'')+'">'+
+          (proj!==null ? '<span class="proj" style="width:'+proj+'%;background:'+farbe+'"></span>' : '')+
+          '<span style="width:'+jetztPct+'%;'+gradientStyle(farbe)+'"></span></div>';
+      };
 
-      // Die Zeile "6 Tage vor Plan" steht jetzt als KACHEL ganz oben, nicht
-      // mehr hier -- eine Zahl an einer Stelle statt an zweien.
-      //
-      // Dafür beantwortet die Gesamtsicht hier eine eigene Frage: Die grosse
-      // Zahl ist dort eine Summe aller Ziele und damit schwer zu greifen --
-      // "3 von 4 Zielen sind noch zu schaffen" sagt mehr als "665 von 470".
-      let planZeile = "";
-      if(all){
-        const ze = zieleErreichbar(scope);
-        if(ze && ze.gesamt > 1){
-          const alleOk = ze.ok === ze.gesamt;
-          planZeile = '<div class="fc-plan" style="color:'+(alleOk?"var(--muted)":"#ffb454")+'">'+
-            (alleOk
-              ? (ze.gesamt===2 ? "Beide Ziele" : "Alle "+ze.gesamt+" Ziele")+" sind noch zu schaffen"
-              : ze.ok+" von "+ze.gesamt+" Zielen sind noch zu schaffen")+
-            '</div>';
+      if(!all){
+        const h0 = scope[0];
+        // Wie viele Tage pro Woche sind überhaupt geplant? Bei Mo-Fr sind
+        // "7 von 7" unmöglich -- mehr als fünf gibt es nicht.
+        const W = (h0.weekdays && h0.weekdays.length && h0.weekdays.length < 7) ? h0.weekdays.length : 7;
+        const machbar = fc.rest >= noetig;
+        const jetztPct = fc.ziel > 0 ? Math.min(100, Math.round(fc.bisher/fc.ziel*100)) : 100;
+        sub = 'Was dich ab jetzt zum Ziel bringt';
+        if(erreicht){
+          row = '<div class="fc-big wort" style="color:var(--good)">Ja</div>'+
+                '<div class="fc-txt"><b style="color:var(--good)">Ziel erreicht.</b><br>'+
+                (fc.bisher > fc.ziel
+                  ? 'Du bist '+(fc.bisher-fc.ziel)+(fc.bisher-fc.ziel===1?' Tag':' Tage')+' über deinem Ziel von '+fc.ziel+'.'
+                  : 'Du hast dein Ziel von '+fc.ziel+' erreicht.')+'</div>';
+          bar = '<div class="fc-bar"><span style="width:100%;'+gradientStyle("#3ecf8e")+'"></span></div>';
+          info = 'Dein Ziel ist erreicht — alles, was jetzt noch dazukommt, ist Zugabe. Die Karte rechnet nichts mehr hoch.';
+          knopf = '<button class="btn primary bild-btn" id="bildBtn">Bild ansehen</button>';
+        }else if(!machbar){
+          row = '<div class="fc-big wort" style="color:#ff8a8a">Nein</div>'+
+                '<div class="fc-txt"><span style="color:#ff8a8a"><b>Ziel nicht mehr erreichbar.</b></span><br>'+
+                'Dir fehlen noch '+noetig+(noetig===1?' Tag':' Tage')+', es bleiben nur '+fc.rest+' geplante.</div>';
+          bar = projBalken(color, jetztPct);
+          unter = projZeile();
+          info = 'Dir fehlen noch <b>'+noetig+'</b> Tage, und es sind nur noch <b>'+fc.rest+'</b> geplante Tage übrig — '+
+                 'selbst an allen davon wäre das Ziel nicht mehr zu schaffen.<br><br>Ausgenommene Tage und die Zeit vor dem '+
+                 'Start des Loops zählen weder mit noch gegen dich.';
+        }else{
+          const quoteNoetig = fc.rest > 0 ? noetig/fc.rest : 0;
+          // noetig*W/rest in einem Schritt: (noetig/rest)*W liefert bei glatten
+          // Brüchen gelegentlich 3,0000000000000004 und rundet dann auf 4 auf.
+          const proWoche = Math.min(W, Math.ceil(noetig*W/fc.rest - 1e-9));
+          // "Im Monat" = Anteil mal geplante Tage je aktivem Monat. Bei einem
+          // Plan nur für einzelne Monate zählt nicht das ganze Jahr.
+          const aktiv = (h0.months && h0.months.length) ? h0.months.length : 12;
+          const proMonat = Math.max(1, Math.round(quoteNoetig * plannedDaysInYear(h0) / aktiv));
+          const vorn = fc.hatQuote && quoteNoetig <= fc.quote;
+          row = '<div class="fc-big">'+proWoche+' von '+W+'</div>'+
+                '<div class="fc-txt"><span style="color:'+(vorn?"var(--good)":"var(--text)")+'"><b>'+
+                (W < 7 ? 'geplanten Tagen' : 'Tagen')+' pro Woche ab jetzt</b></span> — rund '+proMonat+' im Monat.<br>'+
+                'Noch '+noetig+(noetig===1?' Tag fehlt':' Tage fehlen')+' bis zum Ziel von '+fc.ziel+'.</div>';
+          bar = projBalken(color, jetztPct);
+          unter = projZeile();
+          info = '<b>Die große Zahl</b> sagt, an wie vielen Tagen pro Woche du ab jetzt dranbleiben musst: Dir fehlen noch <b>'+
+                 noetig+'</b> Tage, und es sind noch <b>'+fc.rest+'</b> geplante Tage übrig. Dieser Anteil, auf die Woche '+
+                 'gerechnet und aufgerundet, ergibt das Ergebnis. Er hängt nur an dem, was fehlt und was noch kommt — nicht an '+
+                 'deiner bisherigen Quote.<br><br>'+
+                 '<b>Die Hochrechnung</b> darunter nimmt deine Quote der letzten 30 Tage (bei neuen Loops: seit dem Start) und '+
+                 'wendet sie auf die verbleibenden geplanten Tage an. Läuft es so weiter, landest du dort. Sie braucht rund eine '+
+                 'Woche Daten und ist am Anfang noch ungenau. Der helle Teil im Balken zeigt, wie weit sie reicht.<br><br>'+
+                 'Ausgenommene Tage und die Zeit vor dem Start des Loops zählen weder mit noch gegen dich.';
         }
+      }else{
+        // Gesamtsicht: Ziele mit verschiedenem Plan und Umfang lassen sich nicht
+        // sinnvoll zu EINER Zahl zusammenrechnen -- hier steht jeder Loop für sich.
+        const ze = zieleErreichbar(scope);
+        const zeilen = scope.map(x=>{
+          const f = forecast([x]);
+          if(!f) return "";
+          const n = Math.max(0, f.ziel - f.bisher);
+          const sym = x.icon
+            ? '<span class="habit-icon" style="color:'+x.color+';width:22px;height:22px;border-radius:var(--r-s)">'+iconSvg(x.icon,13)+'</span>'
+            : '<span class="dot" style="background:'+x.color+'"></span>';
+          const W2 = (x.weekdays && x.weekdays.length && x.weekdays.length < 7) ? x.weekdays.length : 7;
+          let st;
+          if(f.bisher >= f.ziel) st = '<span style="color:var(--good)">geschafft</span>';
+          else if(f.rest < n) st = '<span style="color:#ff8a8a">nicht mehr erreichbar</span>';
+          else st = 'an '+Math.min(W2, Math.ceil(n*W2/f.rest - 1e-9))+' von '+W2+' Tagen';
+          return '<div class="sm-row">'+sym+'<span class="sm-name">'+escapeHtml(x.name)+'</span><span class="sm-st">'+st+'</span></div>';
+        }).join("");
+        sub = 'Jedes Ziel einzeln, nicht zusammengerechnet';
+        const alleOk = ze && ze.ok === ze.gesamt;
+        row = '<div class="fc-big'+(ze ? "" : " wort")+'" style="color:'+(alleOk?"var(--good)":"#ffb454")+'">'+(ze ? ze.ok+' von '+ze.gesamt : '–')+'</div>'+
+              '<div class="fc-txt">'+(ze && ze.gesamt===1 ? 'Ziel ist noch erreichbar' : 'Ziele sind noch erreichbar')+'<br>'+
+              '<span style="color:var(--muted)">oder schon geschafft.</span></div>';
+        unter = '<div class="sm-list">'+zeilen+'</div>';
+        info = 'Hier steht für jeden Loop einzeln, ob sein Ziel noch zu schaffen ist und an wie vielen Tagen pro Woche du '+
+               'dafür ab jetzt dranbleiben musst. Zusammenrechnen lässt sich das nicht sinnvoll: Ein Loop, der täglich läuft, '+
+               'und einer mit wenigen geplanten Tagen haben nicht dieselbe Einheit.<br><br>'+
+               '„Noch erreichbar" heißt: Es sind noch genug geplante Tage übrig, um das Ziel zu füllen — unabhängig davon, '+
+               'wie wahrscheinlich das ist.';
       }
 
       hochrechnung = '<div class="card reveal">'+
         '<div class="card-head"><div>'+
-          '<div class="card-title">'+(erreicht ? "Ziel" : "Erfolgschancen")+INFO_BTN+'</div>'+
-          '<div class="card-sub">Aus deiner Quote der letzten 30 Tage ('+pctQ+'%)</div>'+
+          '<div class="card-title">Schaffe ich es?'+INFO_BTN+'</div>'+
+          '<div class="card-sub">'+sub+'</div>'+
         '</div></div>'+
-        infoText(
-          (zusatz ? zusatz+'<br><br>' : '')+
-          '<b>Die große Zahl</b> ist die Hochrechnung: Wenn du so weitermachst wie in den '+
-          'letzten 30 Tagen, landest du am Jahresende bei diesem Wert.<br><br>'+
-          '<b>Die Kachel „vor Plan"</b> oben vergleicht dich mit einem gleichmäßigen '+
-          'Verlauf. Fällig ist der Anteil deines Ziels, der zum heutigen Tag passt — bei '+
-          'einem Ziel von 150 Tagen und zwei Dritteln des Jahres also 100. Hast du 106, '+
-          'liegst du 6 Tage vor Plan.<br><br>'+
-          'Ausgenommene Tage zählen dabei weder mit noch gegen dich: An einem Tag, an dem '+
-          'du krank warst, war nichts fällig.'
-        )+
-        '<div class="fc-row">'+
-          '<div class="fc-big" style="color:'+farbe+'">'+kopf+'</div>'+
-          '<div class="fc-txt">'+text+'</div>'+
-        '</div>'+
-        '<div class="fc-bar"><span style="width:'+Math.min(100,Math.round((erreicht?fc.bisher:fc.prognose)/fc.ziel*100))+'%;'+
-          gradientStyle(erreicht ? "#3ecf8e" : color)+'"></span></div>'+
-        planZeile+
-        // Erreichte Ziele bekommen ein Bild. Es liegt hier, weil diese Karte
-        // ohnehin schon sagt "Ziel erreicht" -- und weil sie jedes Mal frisch
-        // gerechnet wird, ist sie auch naechstes Jahr noch da.
-        (erreicht && !all ? '<button class="btn primary bild-btn" id="bildBtn">Bild ansehen</button>' : "")+
+        infoText(info)+
+        '<div class="fc-row">'+row+'</div>'+
+        bar+
+        (unter ? (all ? unter : '<div class="fc-proj">'+unter+'</div>') : '')+
+        (knopf && !all ? knopf : '')+
         '</div>';
     }
 
     // ---- Jahresvergleich ----
     // Steht unter den Monaten und vor der Verinnerlichung: Der Blick geht von
-    // "wie läuft dieses Jahr" (Erfolgschancen, Verlauf, Monate) über zu "wie
+    // "wie läuft dieses Jahr" (Schaffe ich es?, Verlauf, Monate) über zu "wie
     // steht es im Vergleich" -- und erst danach zur einzelnen Gewohnheit.
     let vergleich = "";
     const yc = yearCompare(scope);
@@ -4949,6 +5098,7 @@
     const maxPause = ss.reduce((a,x)=>Math.max(a,x.maxPause), 0);
     const bm = bestMonth(scope, currentYear);
     const ausgenommen = scope.reduce((a,x)=>a+skipCount(x), 0);
+    const ruhetage = scope.reduce((a,x)=>a+restCount(x), 0);
     // "Längste Serie überhaupt" stand früher als Kachel ganz oben. Sie ist eine
     // Bestmarke aus der Vergangenheit, keine Aussage über das laufende Jahr --
     // hier neben längster Pause und bestem Monat steht sie richtig.
@@ -4973,6 +5123,9 @@
         // allermeisten dauerhaft eine Null herum.
         (ausgenommen > 0
           ? miniStat(ausgenommen, ausgenommen===1 ? "Tag ausgenommen" : "Tage ausgenommen")
+          : "")+
+        (ruhetage > 0
+          ? miniStat(ruhetage, ruhetage===1 ? "Ruhetag" : "Ruhetage")
           : "")+
       '</div></div>';
 
@@ -5082,7 +5235,7 @@
     // Bei "Alle Loops" steht die Rangliste GANZ OBEN: Sie ist dort die
     // eigentliche Übersicht -- welcher Loop trägt und welcher hängt. Bei einem
     // einzelnen Loop gibt es sie nicht, dann beginnt es mit "Dein Jahr".
-    html += kacheln;
+    html += stand + kacheln;
     html += abschnitt("Deine Loops", rangliste);
     html += abschnitt("Dein Jahr", hochrechnung + vergleich);
     html += abschnitt("Wie es läuft", oben + wochentage);
@@ -5190,6 +5343,7 @@
   // Weg auch etwas versehentlich Abgehaktes wieder entfernen.
   function startQuick(){
     const t = heute();
+    if(currentYear !== t.getFullYear()) return;
     quickPicked = new Set();
     habitsOfYear(currentYear).forEach(h=>{
       if(isPlanned(h,t) && (h.days||{})[keyOf(t)]) quickPicked.add(h.id);
@@ -5212,6 +5366,11 @@
   }
   function applyQuick(){
     const t = heute(), k = keyOf(t);
+    if(currentYear !== t.getFullYear()){
+      endQuick();
+      toast("Heute lässt sich nur im laufenden Jahr abhaken.");
+      return;
+    }
     let dazu = 0, weg = 0;
     // Habits, deren Serie durch das Übernehmen gewachsen ist -- nur die
     // bekommen anschließend eine lodernde Flamme in der Listenzeile.
