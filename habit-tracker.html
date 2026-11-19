@@ -316,6 +316,23 @@
   /* Ein nicht geplanter Tag schrumpft sonst auf .62 -- als Heute soll der Ring
      aber die volle Groesse haben, sonst faellt er nicht auf. */
   .trail i.t-leer.t-heute{transform:none}
+  /* Wochen-Anzeige (nur Loops mit Wochen-Ziel): sitzt rechts neben den Punkten,
+     wo die Zeile ohnehin frei ist. <b> statt <i>, damit die Regeln der Tagespunkte
+     nicht greifen. */
+  .wmeter{
+    margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:4px;
+    color:var(--muted);font-size:11px;font-weight:600;
+  }
+  .wmeter em{font-style:normal;margin-right:2px;letter-spacing:.1px}
+  .wmeter b{
+    width:9px;height:9px;border-radius:50%;flex:none;
+    box-shadow:inset 0 0 0 1.4px color-mix(in srgb, var(--hc, var(--accent)) 55%, transparent);
+  }
+  .wmeter b.an{background:var(--hc, var(--accent));box-shadow:none}
+  .wmeter.fertig{color:#3ecf8e}
+  .wmeter.fertig b{background:#3ecf8e;box-shadow:none}
+  .wmeter u{display:inline-flex;text-decoration:none;color:#3ecf8e}
+  .wmeter u svg{width:12px;height:12px}
   /* ---------- Ein neu angelegtes Loops meldet sich ----------
      Die Karte waechst kurz ueber ihre Groesse hinaus und faellt zurueck,
      dazu laeuft ein Ring in ihrer eigenen Farbe einmal nach aussen.
@@ -347,20 +364,63 @@
   .habit-top{display:flex;align-items:center;gap:9px}
   .dot{width:12px;height:12px;border-radius:50%;flex:none}
   .habit-name{font-weight:600;font-size:14.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  /* Erreichtes Ziel: ein Haken in der Loop-Farbe neben dem Namen. Er pulst
-     langsam mit -- dieselbe Aussage wie der Glanz im Balken, nur dort, wo man
-     zuerst hinsieht. */
-  .ziel-zeichen{
-    flex:none;width:18px;height:18px;border-radius:50%;display:flex;
-    align-items:center;justify-content:center;
-    background:color-mix(in srgb, var(--hc, var(--accent)) 24%, transparent);
+  /* ---------- Erreichtes Ziel in der Uebersicht ----------
+     Vorher nur ein 18-px-Haken rechts oben -- den uebersah man. Jetzt faellt die
+     ganze Karte auf: eine Plakette "Geschafft" in der Loop-Farbe, ein kraeftigerer
+     Rahmen mit leichtem Schein, staerkerer Farbverlauf und ein GRUENER, voller
+     Balken (Gruen ist in dieser App der Zustand "erreicht", wie in der Statistik).
+     Bewegung gibt es genau eine: Von der Plakette laeuft alle 10 Sekunden ein
+     feiner Ring nach aussen -- dieselbe Geste wie der Ring in der Kopfleiste des
+     Loops, nur kleiner. Er ist etwa eine Sekunde sichtbar, den Rest der Zeit ruht
+     alles. Nur transform und Deckkraft: Die Liste ist die Seite, ueber die man
+     wischt, und jede Zeichenarbeit dort kostet beim Scrollen. */
+  .fertig-pill{
+    position:relative;flex:none;display:inline-flex;align-items:center;gap:4px;
+    padding:3px 9px 3px 7px;border-radius:var(--r-rund);
+    font-size:11.5px;font-weight:700;letter-spacing:.1px;
     color:var(--hc, var(--accent));
+    background:color-mix(in srgb, var(--hc, var(--accent)) 22%, transparent);
+    border:1px solid color-mix(in srgb, var(--hc, var(--accent)) 42%, transparent);
   }
-  .ziel-zeichen svg{width:11px;height:11px}
-  body.glanz .ziel-zeichen{animation:zeichenPuls 4600ms ease-in-out infinite}
-  @keyframes zeichenPuls{
-    0%,100%{transform:scale(1);opacity:.85}
-    50%{transform:scale(1.14);opacity:1}
+  .fertig-pill svg{width:11px;height:11px}
+  .fertig-pill::after{
+    content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
+    border:2px solid var(--hc, var(--accent));opacity:0;
+  }
+  /* --pv verschiebt den Takt je Karte (siehe renderSidebar): Mehrere geschaffte
+     Loops pulsieren nacheinander, nicht alle im selben Moment. Gesteuert vom
+     Schalter "Glanz bei erreichtem Ziel" (body.glanz) und von "Bewegung
+     reduzieren". */
+  body.glanz .fertig-pill::after{
+    animation:plakettenRing 10000ms linear infinite;
+    animation-delay:var(--pv, 0ms);
+  }
+  @keyframes plakettenRing{
+    0%{opacity:.85;transform:scale(1);animation-timing-function:cubic-bezier(.25,.5,.4,1)}
+    12%{opacity:0;transform:scale(1.26,1.7)}
+    100%{opacity:0;transform:scale(1.26,1.7)}
+  }
+  .habit-card.fertig{
+    border-color:color-mix(in srgb, var(--hc, var(--accent)) 58%, var(--line));
+    box-shadow:0 0 0 1px color-mix(in srgb, var(--hc, var(--accent)) 26%, transparent),
+               0 6px 20px color-mix(in srgb, var(--hc, var(--accent)) 16%, transparent);
+  }
+  .habit-card.fertig::before{opacity:.24}
+  /* Ausgewaehlt und gedrueckt behalten ihr eigenes Aussehen -- die Regel oben
+     steht spaeter im Text und wuerde sie sonst ueberstimmen. */
+  .habit-card.fertig.active{
+    border-color:var(--hc, var(--accent));
+    box-shadow:0 0 0 1px var(--hc, var(--accent)) inset, var(--card-shadow);
+  }
+  .habit-card.fertig:active{
+    border-color:var(--hc, var(--accent));
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--hc, var(--accent)) 24%, transparent),
+               0 2px 8px rgba(0,0,0,.3);
+  }
+  /* !important, weil der Balken seine Farbe inline traegt (gradientStyle). */
+  .habit-card.fertig .bar > span{
+    background-color:#3ecf8e !important;
+    background-image:linear-gradient(135deg,#3ecf8e,color-mix(in srgb,#3ecf8e 65%,white)) !important;
   }
   .habit-count{color:var(--muted);font-size:12px;margin-top:8px;font-variant-numeric:tabular-nums}
   .bar{height:7px;border-radius:var(--r-xs);background:#0c0e12;margin-top:6px;overflow:hidden}
@@ -410,18 +470,15 @@
   /* Bleibt beim Scrollen unter der Kopfzeile stehen. --topbar-h wird beim
      Zeichnen gemessen, weil die Kopfzeile je nach Bildschirmbreite ein- oder
      zweizeilig ist -- ein fester Wert wuerde hier zwangslaeufig danebenliegen. */
-  /* ---------- Kopfbereich, der beim Scrollen zusammenfaehrt ----------
-     Oben steht der Stand gross und mit Luft, beim Scrollen zieht er sich zu
-     einer schmalen Zeile zusammen. --kopf-t (0..1) haengt DIREKT und ohne
-     Verzoegerung an der Scrollposition (siehe pruefeKopf weiter unten) --
-     keine eigene Animationsdauer mehr, die Werte folgen dem Finger im selben
-     Augenblick. Vorher lief das ueber eine Schwelle und eine 350ms-Animation
-     (body.eng): Scrollte man waehrenddessen weiter, lief die Animation dem
-     Finger sichtbar hinterher -- genau DAS fuehlte sich wie Ruckeln an, nicht
-     nur der harte Sprung, den fehlende Uebergaenge zusaetzlich verursachten. */
-  :root{ --kopf-t:0; }
+  /* ---------- Kopfbereich ----------
+     Der Kopf bleibt beim Scrollen IMMER so gross wie ganz oben -- er schrumpft
+     nicht mehr (Torben, 19.11.). Das ist zugleich der ruhigste Weg: Frueher hing
+     er mit Groesse, Abstaenden und Deckkraft an der Scrollposition, und jede
+     Aenderung kostete bei jedem Scroll-Ereignis Rechenzeit (die Hoehe schob den
+     ganzen Kalender, die Variable am Dokument liess die ganze Seite neu pruefen).
+     Jetzt haengt hier nichts mehr am Scrollen, es gibt keinen Scroll-Zuhoerer. */
   .goal-wrap{
-    padding:calc(10px - 5px*var(--kopf-t)) 26px calc(12px - 6px*var(--kopf-t));
+    padding:10px 26px 12px;
     position:sticky;top:var(--topbar-h,64px);z-index:4;
     overflow:hidden;background:var(--bg);border-bottom:1px solid var(--line);
   }
@@ -433,34 +490,28 @@
   .goal-wrap::before{
     content:"";position:absolute;top:-150px;left:-150px;width:440px;height:440px;
     background:radial-gradient(circle closest-side, var(--glow,transparent), transparent);
-    opacity:calc(.34 - .16*var(--kopf-t));pointer-events:none;z-index:0;
+    opacity:.34;pointer-events:none;z-index:0;
   }
   .goal-wrap > *{position:relative;z-index:1}
   .goal-head{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;min-width:0}
   .goal-head .big{font-size:13px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
-  /* Skaliert statt die Schriftgroesse selbst zu aendern: transform kostet nur
-     die Grafikkarte, eine animierte font-size erzwingt bei JEDEM Bild einen
-     Neuaufbau des Textlayouts -- ausgerechnet bei jedem Scroll-Ereignis. */
   .goal-head .big b{
-    color:var(--text);font-size:19px;display:inline-block;transform-origin:left center;
-    transform:scale(calc(1 - 0.2105*var(--kopf-t)));
+    color:var(--text);font-size:19px;display:inline-block;
   }
   .goal-rest{
     margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap;
     font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;
-    opacity:calc(1 - var(--kopf-t));
   }
   @media (max-width:720px){ .goal-rest .rest-extra{display:none} }
   .goal-bar{
-    height:calc(8px - 3px*var(--kopf-t));border-radius:var(--r-xs);background:var(--panel-2);
-    margin-top:calc(9px - 3px*var(--kopf-t));overflow:hidden;border:1px solid var(--line);
+    height:8px;border-radius:var(--r-xs);background:var(--panel-2);
+    margin-top:9px;overflow:hidden;border:1px solid var(--line);
   }
   .goal-bar > span{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);transition:transform var(--dur-slow) var(--ease)}
   .streak-badge{
     display:inline-flex;align-items:center;gap:4px;background:var(--panel-2);
     border:1px solid var(--line);border-radius:var(--r-rund);padding:3px 10px;font-size:12.5px;font-weight:700;
     font-variant-numeric:tabular-nums;white-space:nowrap;
-    transform:scale(calc(1 - 0.14*var(--kopf-t)));opacity:calc(1 - 0.25*var(--kopf-t));
   }
   .streak-mini{color:var(--muted);font-weight:700;margin-left:6px;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;gap:4px}
   /* ---------- Serien-Flamme ----------
@@ -1241,17 +1292,17 @@
   @keyframes zielRing{
     0%{opacity:.9;transform:scale(.35)} 100%{opacity:0;transform:scale(3.4)}
   }
+  /* Der Satz steht NICHT im klebenden Kopf, sondern gleich darunter im
+     normalen Seitenfluss: Er scrollt mit dem Inhalt weg. Stuende er im Kopf, wuerde
+     der dauerhaft um eine Zeile hoeher, solange das Ziel erreicht ist. */
   .ziel-satz{
-    margin-top:0;font-size:13.5px;font-weight:700;color:var(--good);
+    margin:0;padding:0 26px;font-size:13.5px;font-weight:700;color:var(--good);
     opacity:0;height:0;overflow:hidden;transform:translateY(6px);
     transition:opacity var(--dur) var(--ease);
   }
-  /* Solange das Ziel steht, steht auch der Satz -- nicht nur drei Sekunden.
-     Weicht im zusammengezogenen Kopf wie der Resttext, folgt dabei --kopf-t
-     direkt statt einer eigenen Uebergangszeit (siehe Kopfbereich weiter oben). */
-  .goal-wrap.erreicht .ziel-satz{
-    opacity:calc(1 - var(--kopf-t));transform:none;height:auto;
-    margin-top:calc(10px - 10px*var(--kopf-t));
+  /* Solange das Ziel steht, steht auch der Satz -- nicht nur drei Sekunden. */
+  .goal-wrap.erreicht + .ziel-satz{
+    opacity:1;transform:none;height:auto;padding:10px 26px 0;
   }
   body.feiert .ziel-satz{animation:zielSatz 1280ms cubic-bezier(.25,.5,.4,1) 384ms both}
   @keyframes zielSatz{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -1613,6 +1664,7 @@
     /* Erst hier ist die Liste die Uebersicht -- der Start-Reiter. Nur dort
        gehoert der Mini-Verlauf hin. */
     .trail{display:flex}
+    .wk-text{display:none}
 
     /* Beim Hereingleiten steht eine Ansicht kurz seitlich versetzt und ragt
        dabei ueber den Rand. "clip" schneidet das ab, ohne -- anders als
@@ -1865,8 +1917,10 @@
         <div class="goal-mode" id="goalMode">
           <button data-mode="year" class="sel">Ganzes Jahr</button>
           <button data-mode="custom">Eigene Zahl</button>
+          <button data-mode="week">Pro Woche</button>
         </div>
         <input type="number" id="mTarget" min="1" max="366" value="100" style="display:none">
+        <input type="number" id="mPerWeek" min="1" max="7" value="3" style="display:none">
         <div id="goalHint" style="color:var(--muted);font-size:12px">Ziel = alle Tage des Jahres (365 bzw. 366 im Schaltjahr).</div>
       </div>
 
@@ -1969,7 +2023,7 @@
         <div class="opt-row">
           <div>
             <div class="opt-title">Glanz bei erreichtem Ziel</div>
-            <div class="opt-sub">Der Feier-Ring läuft alle paar Sekunden erneut, solange das Ziel erreicht bleibt</div>
+            <div class="opt-sub">Der Feier-Ring läuft alle paar Sekunden erneut, solange das Ziel erreicht bleibt — im Loop und an der „Geschafft"-Plakette in der Übersicht</div>
           </div>
           <button class="switch" id="glanzSwitch" role="switch" aria-checked="true"><span></span></button>
         </div>
@@ -2068,7 +2122,7 @@
   // nicht mehr an sein, sonst hakt man versehentlich Tage aus statt ab.
   let skipMode = false;
   let skipKind = "sick";
-  let skipAll  = true;   // "krank" betrifft fast immer alle Habits
+  let skipAll  = false;  // "Für alle Loops" ist immer erst aus -- man schaltet es selbst ein
   let statsScope = localStorage.getItem(SCOPE_KEY)==="all" ? "all" : "habit";
   let statsRange = RANGES.some(r=>r.id===localStorage.getItem(RANGE_KEY)) ? localStorage.getItem(RANGE_KEY) : "30d";
   let animOn = localStorage.getItem(ANIM_KEY) !== "0";
@@ -2321,6 +2375,46 @@
     return c;
   }
 
+  // ---------- Wochen-Ziel ("3x pro Woche") ----------
+  // Ein Loop mit Wochen-Ziel ist ein ganz normaler Loop mit eigener Zahl
+  // (goalMode "custom"): Das Jahresziel wird beim Speichern aus "x pro Woche"
+  // errechnet und steht in h.target. Dadurch rechnet die gesamte Statistik wie
+  // bisher, nichts Bestehendes muss angefasst werden. h.perWeek merkt sich nur,
+  // wie das Ziel eingegeben wurde, und steuert die Wochen-Anzeige. Serie und
+  // Statistik kennen die Woche (noch) nicht -- die Serie zaehlt weiter Tage.
+  // Wie viele Tage pro Woche sind ueberhaupt vorgesehen (7 ohne Wochentage-Plan)?
+  function wochenTage(plan){
+    return (plan.weekdays && plan.weekdays.length && plan.weekdays.length < 7) ? plan.weekdays.length : 7;
+  }
+  // Jahresziel aus "n pro Woche": Wochen im Plan mal n. Bei einem Plan mit
+  // einzelnen Wochentagen oder Monaten zaehlen nur die Wochen, in denen er gilt.
+  function zielAusWoche(proWoche, plan){
+    const w = wochenTage(plan);
+    return Math.max(1, Math.round(Math.min(proWoche, w) * plannedDaysInYear(plan) / w));
+  }
+  // Stand der laufenden Woche (Montag bis Sonntag): wie viele Tage sind schon
+  // erfuellt, wie viele muessen es sein. Waren in der Woche Tage ausgenommen
+  // (krank, Ruhetag) oder nicht geplant, sinkt die Anforderung entsprechend --
+  // mehr als moeglich verlangt die Anzeige nie. Null, wenn es keinen
+  // Wochenstand gibt (kein Wochen-Ziel, anderes Jahr, nichts moeglich).
+  function wochenStand(h){
+    if(!h.perWeek) return null;
+    const t = heute();
+    if(h.year !== t.getFullYear()) return null;
+    const montag = new Date(t.getFullYear(), t.getMonth(), t.getDate() - wdMon(t));
+    const start = startTag(h);
+    let erledigt = 0, moeglich = 0;
+    for(let i=0;i<7;i++){
+      const d = new Date(montag.getFullYear(), montag.getMonth(), montag.getDate()+i);
+      if(d.getFullYear() !== h.year || d < start || !countsForStreak(h, d)) continue;
+      moeglich++;
+      if((h.days||{})[keyOf(d)]) erledigt++;
+    }
+    const soll = Math.min(h.perWeek, moeglich);
+    if(soll <= 0) return null;
+    return { erledigt: Math.min(erledigt, soll), soll: soll, geschafft: erledigt >= soll };
+  }
+
   // Bei "Ganzes Jahr" ist das Ziel nicht mehr stur 365, sondern die Zahl der
   // geplanten Tage -- sonst wäre ein Habit, der nur Mo-Fr läuft, von vornherein
   // unerreichbar.
@@ -2426,11 +2520,15 @@
   // Rechte Seite der Kopfzeile. Ausgenommene Tage stehen hier getrennt, weil
   // das Ziel bewusst bei 365 bleibt -- ohne den Hinweis sähe es so aus, als
   // hätte man die Tage schlicht verpasst.
-  function goalRestParts(h, target, done){
+  function goalRestParts(h, target, done, wochen){
     const rest = Math.max(0, target-done);
     const aus = skipCount(h), ruhe = restCount(h);
+    // Bei einem Wochen-Ziel steht in der schmalen Kopfzeile die Woche statt der
+    // Resttage ("noch 30 Tage" steht ohnehin in "Wo stehe ich?").
+    const ws = wochen ? wochenStand(h) : null;
     return {
-      kern: "noch "+rest+(rest===1?" Tag":" Tage"),
+      kern: ws ? (ws.geschafft ? "Woche geschafft" : "Woche "+ws.erledigt+" von "+ws.soll)
+               : "noch "+rest+(rest===1?" Tag":" Tage"),
       extra: (aus ? " · "+aus+" ausgenommen" : "") +
              (ruhe ? " · "+ruhe+(ruhe===1?" Ruhetag":" Ruhetage") : "")
     };
@@ -2444,7 +2542,7 @@
   // (es stand nur "· 4 a…"), und mit Ruhetagen wäre es noch länger. Zu lesen
   // sind die Zahlen weiter in "Wo stehe ich?" der Statistik und im Panel.
   function goalRestHtml(h, target, done){
-    const p = goalRestParts(h, target, done);
+    const p = goalRestParts(h, target, done, true);
     return p.kern + (p.extra ? '<span class="rest-extra">'+p.extra+'</span>' : "");
   }
 
@@ -2714,6 +2812,9 @@
   }
 
   // ---------- Rendering ----------
+  const FERTIG_PILL = '<span class="fertig-pill" title="Ziel erreicht">'+ICONS.check+'Geschafft</span>';
+  // Takt der Plakettenringe: vier Plaetze im Abstand von 2,5 s, danach wieder von vorn.
+  function fertigTakt(nr){ return (-(nr % 4) * 2500)+"ms"; }
   function renderSidebar(){
     const list = document.getElementById("habitList");
     // FLIP "First": Positionen der bestehenden Karten vor dem Neuaufbau merken
@@ -2736,13 +2837,15 @@
     const intro = animOn && sidebarIntro;
     sidebarIntro = false;
 
+    let fertigNr = 0;
     habits.forEach((h,idx)=>{
       const done = doneCount(h);
       const target = targetFor(h);
       const pct = target>0 ? Math.min(100, Math.round(done/target*100)) : 0;
       const streak = currentStreak(h);
       const card = document.createElement("div");
-      card.className = "habit-card"+(h.id===selectedId?" active":"")+(intro?" intro":"");
+      card.className = "habit-card"+(h.id===selectedId?" active":"")+(done>=target?" fertig":"")+(intro?" intro":"");
+      if(done>=target) card.style.setProperty("--pv", fertigTakt(fertigNr++));
       card.style.setProperty("--hc", h.color);
       if(intro) card.style.setProperty("--d", (idx*55)+"ms");
       card.draggable = true;
@@ -2755,10 +2858,9 @@
         '<span class="habit-name">'+escapeHtml(h.name)+'</span>'+
         // Steht das Ziel, sieht man es schon in der Uebersicht -- ohne zu
         // suchen und ohne die Statistik zu oeffnen.
-        (done>=target ? '<span class="ziel-zeichen" title="Ziel erreicht">'+ICONS.check+'</span>' : "")+
+        (done>=target ? FERTIG_PILL : "")+
         '</div>'+
-        '<div class="habit-count">'+done+' von '+target+' erfüllt · '+pct+'%'+
-        (streak>0 ? '<span class="streak-mini">'+flameHTML(streak,15)+streak+'</span>' : '')+'</div>'+
+        '<div class="habit-count">'+countHtml(h, done, target, pct, streak)+'</div>'+
         '<div class="bar"><span data-pct="'+pct+'" style="transform:scaleX('+(intro?0:pct/100)+');'+gradientStyle(h.color)+'"></span></div>'+
         trailHTML(h)+
         '<span class="habit-pick">'+ICONS.check+'</span>';
@@ -2790,15 +2892,26 @@
         // der Habit kommt. Ohne Momentaufnahme fiel die Liste hart weg und der
         // leere Hintergrund blitzte durch -- dieselbe Stelle, die schon bei der
         // unteren Reiterleiste auffiel, nur war sie hier nie angeschlossen.
-        if(window.matchMedia("(max-width:720px)").matches){
+        const amHandy = window.matchMedia("(max-width:720px)").matches;
+        if(amHandy){
           pendingAnim = { sel:"#content", cls:"anim-right" };
           seitenAbgang(".sidebar", "anim-right");
         }else{
           pendingAnim = { sel:"#content", cls:"anim-up" };
         }
+        // Am Handy ist die Liste die Startseite: Ein Loop aus ihr oeffnet IMMER den
+        // Kalender. Die zuletzt benutzte Ansicht wird gemerkt und kam nach dem
+        // App-Start wieder -- wer zuletzt in der Statistik war, landete dadurch
+        // beim naechsten Antippen eines Loops dort. Am Mac bleibt es bei der
+        // gemerkten Ansicht: Dort steht die Liste dauerhaft neben dem Inhalt, und
+        // wer Loops in der Statistik durchklickt, will in ihr bleiben.
+        if(amHandy && view !== "cal"){
+          view = "cal";
+          localStorage.setItem(VIEW_KEY, view);
+        }
         // Wer einen bestimmten Habit antippt, will dessen Zahlen sehen --
         // nicht die Gesamtübersicht, die vorher offen war.
-        if(view==="stats" && statsScope==="all"){
+        if((amHandy || view==="stats") && statsScope==="all"){
           statsScope = "habit";
           localStorage.setItem(SCOPE_KEY, statsScope);
         }
@@ -2906,6 +3019,23 @@
   // Karte aktualisiert und der andere die ganze Liste neu baut.
   const frischeLoops = new Set();
 
+  // Wochen-Anzeige rechts neben den Tagespunkten: so viele Punkte, wie pro Woche
+  // verlangt sind, gefuellt = diese Woche geschafft. Ist die Woche voll, werden
+  // sie gruen und tragen einen Haken. Nur Loops mit Wochen-Ziel haben sie.
+  function wochenMeter(ws){
+    let punkte = "";
+    for(let i=0;i<ws.soll;i++) punkte += '<b class="'+(i<ws.erledigt ? "an" : "")+'"></b>';
+    return '<span class="wmeter'+(ws.geschafft ? " fertig" : "")+'" title="Diese Woche: '+ws.erledigt+' von '+ws.soll+'">'+
+           '<em>Woche</em>'+punkte+(ws.geschafft ? '<u>'+ICONS.check+'</u>' : '')+'</span>';
+  }
+  // Untertitel der Karte. Am Mac, wo die Punktezeile fehlt, steht die Woche als
+  // kurzer Zusatz hier (am Handy blendet das CSS ihn aus).
+  function countHtml(h, done, target, pct, streak){
+    const ws = wochenStand(h);
+    return done+' von '+target+' erfüllt · '+pct+'%'+
+      (ws ? '<span class="wk-text"> · Woche '+ws.erledigt+'/'+ws.soll+'</span>' : '')+
+      (streak>0 ? '<span class="streak-mini">'+flameHTML(streak,15)+streak+'</span>' : '');
+  }
   function trailHTML(h){
     const t = heute();
     // In einem abgeschlossenen Jahr endet die Reihe am 31.12. -- sonst zeigte
@@ -2932,6 +3062,8 @@
       out += '<i class="'+cls+'" style="--i:'+(TRAIL_TAGE-1-i)+'">'+
              (cls.indexOf("t-done") >= 0 ? TORTE : "")+'</i>';
     }
+    const ws = wochenStand(h);
+    if(ws) out += wochenMeter(ws);
     return out+'</div>';
   }
 
@@ -3146,10 +3278,20 @@
     const alteFlamme = card.querySelector(".streak-mini .flame");
     const alteStufe = alteFlamme ? +alteFlamme.getAttribute("data-stage") : -1;
 
-    card.querySelector(".habit-count").innerHTML =
-      done+" von "+target+" erfüllt · "+pct+"%"+
-      (streak>0 ? '<span class="streak-mini">'+flameHTML(streak,15)+streak+'</span>' : "");
+    card.querySelector(".habit-count").innerHTML = countHtml(h, done, target, pct, streak);
     setBar(card.querySelector(".bar > span"), pct);
+    // Wird das Ziel erst jetzt erreicht (oder durch Zuruecknehmen wieder
+    // verlassen), folgen Karte und Plakette sofort -- nicht erst beim naechsten
+    // Neuaufbau der Liste.
+    const fertig = done >= target;
+    if(fertig && !card.classList.contains("fertig")){
+      card.style.setProperty("--pv", fertigTakt(document.querySelectorAll("#habitList .habit-card.fertig").length));
+    }
+    card.classList.toggle("fertig", fertig);
+    const kopf = card.querySelector(".habit-top");
+    const plakette = kopf && kopf.querySelector(".fertig-pill");
+    if(fertig && kopf && !plakette) kopf.insertAdjacentHTML("beforeend", FERTIG_PILL);
+    else if(!fertig && plakette) plakette.remove();
     // Der Mini-Verlauf endet heute -- beim Abhaken ändert sich also immer der
     // letzte Punkt. Ersetzt statt neu gezeichnet, damit die Karte selbst (und
     // damit jede laufende Animation darauf) unangetastet bleibt.
@@ -3261,11 +3403,12 @@
         // Laeuft nur bei der Feier -- liegt sonst still und kostet nichts.
         '<u class="ziel-welle" id="zielWelle"></u></div>'+
       '<span class="ziel-ring" id="zielRing"></span>'+
+      '</div>'+
       // Steht dauerhaft da, solange das Ziel erreicht ist -- nicht nur waehrend
       // der Feier. Ein Satz, der nach drei Sekunden verschwindet, ist keine
-      // Aussage ueber einen Zustand, sondern eine Meldung.
-      '<div class="ziel-satz" id="zielSatz">Ziel erreicht. Du hast das Jahr durchgezogen.</div>'+
-      '</div>';
+      // Aussage ueber einen Zustand, sondern eine Meldung. Er folgt direkt auf
+      // den Kopf (Geschwister), damit "erreicht" am Kopf ihn einblendet.
+      '<div class="ziel-satz" id="zielSatz">Ziel erreicht. Du hast das Jahr durchgezogen.</div>';
 
     // Die Welle spielt beim Öffnen einer Ansicht, aber nicht, wenn der Kalender
     // nur wegen eines Umschalt+Klick-Bereichs neu gezeichnet wird -- sonst
@@ -3337,6 +3480,11 @@
       skipMode = !skipMode;
       document.body.classList.toggle("skipmode", skipMode);
       if(skipMode){
+        // Jedes Öffnen beginnt mit "Für alle Loops" AUS -- sonst bliebe eine
+        // frühere Einstellung stehen, und ein Tag landete unbemerkt in allen Loops.
+        skipAll = false;
+        const alleSw = document.getElementById("skipAllSw");
+        if(alleSw) alleSw.setAttribute("aria-checked", "false");
         // Die Pille im Panel steht erst nach dem Einblenden auf einer Breite --
         // vorher liefert getBoundingClientRect() Nullen.
         positionSegThumb(document.getElementById("skipKindSwitch"), true);
@@ -3357,12 +3505,8 @@
       skipKind = b.getAttribute("data-kind");
       artSchalter.querySelectorAll("button").forEach(x=>x.classList.toggle("sel", x===b));
       positionSegThumb(artSchalter);
-      // "Krank" betrifft in aller Regel alle Habits, eine Ausnahme meist nur
-      // diesen einen, ein Ruhetag gehört zu einem Loop (dem Sport). Die
-      // Vorauswahl folgt dem, bleibt aber änderbar.
-      skipAll = (skipKind === "sick");
-      const sw = document.getElementById("skipAllSw");
-      if(sw) sw.setAttribute("aria-checked", skipAll ? "true" : "false");
+      // "Für alle Loops" bleibt, wie es ist: Früher schaltete sich das bei "Krank"
+      // von selbst ein -- Torben will es selbst einschalten (19.11.).
       // Zähler und Hinweis hängen an der Art: Ruhetage haben keine Grenze.
       updateSkipPanel(h);
     });
@@ -4562,7 +4706,6 @@
     const rb = rangeBounds();
     const series = rollingSeries(scope, rb.from, rb.to, 7);
     const months = monthlySeries(scope, currentYear);
-    const avg = series.length ? Math.round(series.reduce((a,p)=>a+p.pct,0)/series.length) : 0;
 
     let html = '<div class="stats-wrap">';
 
@@ -4631,7 +4774,7 @@
     let oben = '<div class="card reveal" data-job="chart">'+
       '<div class="card-head"><div>'+
         '<div class="card-title">Verlauf</div>'+
-        '<div class="card-sub">Anteil erfüllter Tage im gleitenden 7-Tage-Fenster · Ø '+avg+'%</div>'+
+        '<div class="card-sub">Anteil erfüllter Tage im gleitenden 7-Tage-Fenster</div>'+
       '</div>'+
       '<div class="seg mini" id="rangeSwitch"><span class="seg-thumb"></span>'+
         RANGES.map(r=>'<button data-range="'+r.id+'"'+(statsRange===r.id?' class="sel"':"")+'>'+r.label+'</button>').join("")+
@@ -4763,8 +4906,7 @@
           const vorn = fc.hatQuote && quoteNoetig <= fc.quote;
           row = '<div class="fc-big">'+proWoche+' von '+W+'</div>'+
                 '<div class="fc-txt"><span style="color:'+(vorn?"var(--good)":"var(--text)")+'"><b>'+
-                (W < 7 ? 'geplanten Tagen' : 'Tagen')+' pro Woche ab jetzt</b></span> — rund '+proMonat+' im Monat.<br>'+
-                'Noch '+noetig+(noetig===1?' Tag fehlt':' Tage fehlen')+' bis zum Ziel von '+fc.ziel+'.</div>';
+                (W < 7 ? 'geplanten Tagen' : 'Tagen')+' pro Woche ab jetzt</b></span> — rund '+proMonat+' im Monat.</div>';
           bar = projBalken(color, jetztPct);
           unter = projZeile();
           info = '<b>Die große Zahl</b> sagt, an wie vielen Tagen pro Woche du ab jetzt dranbleiben musst: Dir fehlen noch <b>'+
@@ -5551,25 +5693,9 @@
     if(h > 0) document.documentElement.style.setProperty("--topbar-h", h+"px");
   }
 
-  // ---------- Kopfbereich beim Scrollen zusammenziehen ----------
-  // Am Mac scrollt .main, am Handy das Fenster -- deshalb beide fragen.
-  // --kopf-t (0..1) wird bei JEDEM Scroll-Ereignis direkt aus der Position
-  // berechnet und sofort geschrieben -- kein Schwellwert, kein Umschalten
-  // einer Klasse, keine eigene Animationsdauer mehr. Vorher lief der Kopf
-  // einer 350ms-Animation hinterher, die an einer festen Schwelle auslöste --
-  // scrollte man waehrenddessen weiter, kam der Kopf sichtbar zu spaet nach.
-  // Das GENAU war das Ruckeln, nicht nur ein harter Sprung.
-  const KOPF_BIS = 54;
-  function pruefeKopf(){
-    const m = document.querySelector(".main");
-    const oben = Math.max(window.scrollY || 0, m ? m.scrollTop : 0);
-    const t = Math.max(0, Math.min(1, oben/KOPF_BIS));
-    document.documentElement.style.setProperty("--kopf-t", t.toFixed(3));
-  }
-  window.addEventListener("scroll", pruefeKopf, { passive:true });
-  document.addEventListener("scroll", (e)=>{
-    if(e.target && e.target.classList && e.target.classList.contains("main")) pruefeKopf();
-  }, true);
+  // Der Kopfbereich (.goal-wrap) bleibt beim Scrollen gleich gross -- hier gibt es
+  // dafuer nichts mehr zu tun. (Frueher stand an dieser Stelle die Kopplung von
+  // --kopf-t an die Scrollposition; sie ist am 19.11. auf Wunsch entfallen.)
 
   // ohneListe: Die Seitenleiste bleibt stehen. Beim Wechsel Start <-> Kalender
   // aendert sich an ihr nichts -- sie neu zu bauen (mit allen Karten,
@@ -5666,9 +5792,12 @@
         days: {},
         created: Date.now()
       };
+      if(p.perWeek) nh.perWeek = p.perWeek;
       // Ziel neu berechnen: das neue Jahr hat andere Wochentage und
-      // möglicherweise einen 29. Februar.
-      nh.target = p.goalMode==="custom" ? p.target : plannedDaysInYear(nh);
+      // möglicherweise einen 29. Februar. Ein Wochen-Ziel wird aus "x pro
+      // Woche" neu errechnet.
+      nh.target = p.perWeek ? zielAusWoche(p.perWeek, nh)
+                : (p.goalMode==="custom" ? p.target : plannedDaysInYear(nh));
       state.habits.push(nh);
     });
     save();
@@ -5688,7 +5817,8 @@
     // stünde die Auswahl auf "Sport", während das Symbol woanders liegt.
     iconCat = modalIcon ? iconCatOf(modalIcon) : ICON_CATS[0].id;
     modalColor = h ? h.color : COLORS[habitsOfYear(currentYear).length % COLORS.length];
-    modalGoalMode = h ? h.goalMode : "year";
+    modalGoalMode = h ? (h.perWeek ? "week" : h.goalMode) : "year";
+    document.getElementById("mPerWeek").value = (h && h.perWeek) ? h.perWeek : 3;
     modalWeekdays = (h && h.weekdays && h.weekdays.length) ? h.weekdays.slice() : [0,1,2,3,4,5,6];
     modalMonths   = (h && h.months   && h.months.length)   ? h.months.slice()   : [0,1,2,3,4,5,6,7,8,9,10,11];
     document.getElementById("mTarget").value = (h && h.goalMode==="custom") ? h.target : 100;
@@ -5726,7 +5856,9 @@
     const probe = { year: jahr, weekdays: modalWeekdays, months: modalMonths };
     const ziel = modalGoalMode==="custom"
       ? (parseInt(document.getElementById("mTarget").value, 10) || 0)
-      : plannedDaysInYear(probe);
+      : (modalGoalMode==="week"
+          ? zielAusWoche(Math.max(1, parseInt(document.getElementById("mPerWeek").value, 10) || 1), probe)
+          : plannedDaysInYear(probe));
     const done = h ? doneCount(h) : 0;
     const pct = ziel > 0 ? Math.min(100, Math.round(done/ziel*100)) : 0;
     document.getElementById("mVSub").textContent = done+" von "+ziel+" erfüllt · "+pct+"%";
@@ -5782,6 +5914,8 @@
     if(modalGoalMode==="year"){
       document.getElementById("goalHint").textContent =
         "Ziel = alle geplanten Tage ("+tage+" in "+jahr+").";
+    }else if(modalGoalMode==="week"){
+      wochenHinweis();
     }
     document.getElementById("mZeitraumWert").textContent = zeitraumKurz();
     updateVorschau();
@@ -5835,16 +5969,29 @@
     });
     document.getElementById("mColorPicker").value = modalColor;
   }
+  // Hinweis unter dem Wochen-Ziel: was daraus als Jahresziel wird.
+  function wochenHinweis(){
+    const jahr = editingId ? (getHabit(editingId)||{}).year || currentYear : currentYear;
+    const probe = { year: jahr, weekdays: modalWeekdays, months: modalMonths };
+    const w = wochenTage(probe);
+    const n = parseInt(document.getElementById("mPerWeek").value, 10) || 0;
+    const el = document.getElementById("goalHint");
+    if(n < 1) el.textContent = "Wie oft pro Woche? Mindestens einmal.";
+    else if(n > w) el.textContent = "So viele Tage sind pro Woche gar nicht geplant — höchstens "+w+".";
+    else el.textContent = "Ergibt "+zielAusWoche(n, probe)+" im Jahr "+jahr+" ("+n+" mal pro Woche, Montag bis Sonntag).";
+  }
   function setGoalMode(mode){
     modalGoalMode = mode;
     document.querySelectorAll("#goalMode button").forEach(b=>{
       b.classList.toggle("sel", b.getAttribute("data-mode")===mode);
     });
     document.getElementById("mTarget").style.display = mode==="custom" ? "" : "none";
+    document.getElementById("mPerWeek").style.display = mode==="week" ? "" : "none";
     document.getElementById("goalHint").style.display = mode==="custom" ? "none" : "";
-    // Der Hinweistext nennt die Zahl der geplanten Tage -- die hängt an der
-    // Wochentags- und Monatsauswahl und muss beim Moduswechsel mitziehen.
-    if(mode==="year" && document.getElementById("mWeekdays").children.length) renderPlanChips();
+    // Der Hinweistext nennt die Zahl der geplanten Tage bzw. das Jahresziel -- die
+    // hängen an der Wochentags- und Monatsauswahl und müssen beim Moduswechsel
+    // mitziehen.
+    if((mode==="year" || mode==="week") && document.getElementById("mWeekdays").children.length) renderPlanChips();
     else updateVorschau();   // bei "Eigene Zahl" läuft renderPlanChips nicht
   }
 
@@ -5855,6 +6002,16 @@
     if(modalGoalMode==="custom"){
       if(!target || target<1){ toast("Bitte gib ein gültiges Ziel (mindestens 1) ein."); return; }
     }
+    // Wochen-Ziel: Gespeichert wird ein normales Ziel mit eigener Zahl (goalMode
+    // "custom"), das aus "x pro Woche" errechnet wird, dazu perWeek zur Anzeige.
+    let proWoche = 0;
+    if(modalGoalMode==="week"){
+      proWoche = parseInt(document.getElementById("mPerWeek").value,10);
+      const w = wochenTage({ weekdays: modalWeekdays });
+      if(!proWoche || proWoche<1){ toast("Bitte gib an, wie oft pro Woche (mindestens einmal)."); return; }
+      if(proWoche > w){ toast("Pro Woche sind nur "+w+" Tage geplant."); return; }
+    }
+    const modus = modalGoalMode==="week" ? "custom" : modalGoalMode;
     if(!modalWeekdays.length || !modalMonths.length){
       toast("Wähle mindestens einen Wochentag und einen Monat aus."); return;
     }
@@ -5867,30 +6024,39 @@
 
     if(editingId){
       const h=getHabit(editingId);
-      h.name=name; h.color=modalColor; h.goalMode=modalGoalMode;
+      h.name=name; h.color=modalColor; h.goalMode=modus;
       h.icon = modalIcon; h.note = note;
       h.weekdays = wdSet; h.months = moSet;
-      h.target = modalGoalMode==="custom" ? target : plannedDaysInYear(h);
+      if(proWoche) h.perWeek = proWoche; else delete h.perWeek;
+      h.target = proWoche ? zielAusWoche(proWoche, h)
+               : (modus==="custom" ? target : plannedDaysInYear(h));
       selectedId = editingId;
     }else{
       const h={
         id:uid(), year:currentYear, name, color:modalColor,
         icon: modalIcon, note: note,
-        goalMode:modalGoalMode,
+        goalMode:modus,
         weekdays: wdSet, months: moSet,
         target: 0,
         order: habitsOfYear(currentYear).length,
         days:{}, created:Date.now()
       };
-      h.target = modalGoalMode==="custom" ? target : plannedDaysInYear(h);
+      if(proWoche) h.perWeek = proWoche;
+      h.target = proWoche ? zielAusWoche(proWoche, h)
+               : (modus==="custom" ? target : plannedDaysInYear(h));
       state.habits.push(h);
       selectedId=h.id;
       mobileDetail=true;
       // Die Karte soll sich beim nächsten Zeichnen der Liste einmal melden.
       neuerLoop = h.id;
+      // Ein neu angelegter Loop startet im Kalender: Dort fängt man an abzuhaken,
+      // und eine Statistik ohne Daten sagt noch nichts (Torben, 19.11.). Gilt für
+      // Handy und Mac; die gemerkte Ansicht wird dabei mit umgestellt.
+      if(view !== "cal"){ view = "cal"; localStorage.setItem(VIEW_KEY, view); }
       save(); closeModal(); renderAll();
       toast('„'+name+'“ angelegt · '+
-            (modalGoalMode==="custom" ? "Ziel "+h.target+" mal" : h.target+" geplante Tage")+
+            (proWoche ? proWoche+" mal pro Woche (Ziel "+h.target+")"
+                      : (modus==="custom" ? "Ziel "+h.target+" mal" : h.target+" geplante Tage"))+
             ' in '+currentYear+'.');
       return;
     }
@@ -6163,6 +6329,7 @@
   // Die Vorschau zieht beim Tippen mit -- das ist der ganze Sinn der Sache.
   document.getElementById("mName").addEventListener("input", updateVorschau);
   document.getElementById("mTarget").addEventListener("input", updateVorschau);
+  document.getElementById("mPerWeek").addEventListener("input", ()=>{ wochenHinweis(); updateVorschau(); });
   document.getElementById("deleteBtn").addEventListener("click",deleteHabit);
   document.getElementById("overlay").addEventListener("click",(e)=>{ if(e.target.id==="overlay") closeModal(); });
   document.querySelectorAll("#goalMode button").forEach(b=>b.addEventListener("click",()=>setGoalMode(b.getAttribute("data-mode"))));
