@@ -367,11 +367,12 @@
   /* ---------- Erreichtes Ziel in der Uebersicht ----------
      Vorher nur ein 18-px-Haken rechts oben -- den uebersah man. Jetzt faellt die
      ganze Karte auf: eine Plakette "Geschafft" in der Loop-Farbe, ein kraeftigerer
-     Rahmen mit leichtem Schein, staerkerer Farbverlauf und ein GRUENER, voller
-     Balken (Gruen ist in dieser App der Zustand "erreicht", wie in der Statistik).
-     Bewegung gibt es genau eine: Von der Plakette laeuft alle 10 Sekunden ein
-     feiner Ring nach aussen -- dieselbe Geste wie der Ring in der Kopfleiste des
-     Loops, nur kleiner. Er ist etwa eine Sekunde sichtbar, den Rest der Zeit ruht
+     Rahmen mit leichtem Schein, staerkerer Farbverlauf und der volle Balken in der
+     Farbe des Loops (ein gruener Balken sah neben den farbigen Karten unruhig aus,
+     Torben, 19.11.).
+     Bewegung gibt es genau eine: Von der Plakette laeuft alle 7 Sekunden ein
+     feiner Ring nach aussen -- dieselbe Geste und derselbe Takt wie der Ring in der
+     Kopfleiste des Loops. Er ist 1,8 Sekunden sichtbar, den Rest der Zeit ruht
      alles. Nur transform und Deckkraft: Die Liste ist die Seite, ueber die man
      wischt, und jede Zeichenarbeit dort kostet beim Scrollen. */
   .fertig-pill{
@@ -387,17 +388,17 @@
     content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
     border:2px solid var(--hc, var(--accent));opacity:0;
   }
-  /* --pv verschiebt den Takt je Karte (siehe renderSidebar): Mehrere geschaffte
-     Loops pulsieren nacheinander, nicht alle im selben Moment. Gesteuert vom
+  /* --pv verzoegert den Start je Karte (siehe renderSidebar): Mehrere geschaffte
+     Loops laufen nacheinander an, nicht alle im selben Moment. Gesteuert vom
      Schalter "Glanz bei erreichtem Ziel" (body.glanz) und von "Bewegung
      reduzieren". */
   body.glanz .fertig-pill::after{
-    animation:plakettenRing 10000ms linear infinite;
+    animation:plakettenRing 7000ms linear infinite;
     animation-delay:var(--pv, 0ms);
   }
   @keyframes plakettenRing{
     0%{opacity:.85;transform:scale(1);animation-timing-function:cubic-bezier(.25,.5,.4,1)}
-    12%{opacity:0;transform:scale(1.26,1.7)}
+    25.7%{opacity:0;transform:scale(1.26,1.7)}
     100%{opacity:0;transform:scale(1.26,1.7)}
   }
   .habit-card.fertig{
@@ -417,11 +418,7 @@
     box-shadow:0 0 0 3px color-mix(in srgb, var(--hc, var(--accent)) 24%, transparent),
                0 2px 8px rgba(0,0,0,.3);
   }
-  /* !important, weil der Balken seine Farbe inline traegt (gradientStyle). */
-  .habit-card.fertig .bar > span{
-    background-color:#3ecf8e !important;
-    background-image:linear-gradient(135deg,#3ecf8e,color-mix(in srgb,#3ecf8e 65%,white)) !important;
-  }
+
   .habit-count{color:var(--muted);font-size:12px;margin-top:8px;font-variant-numeric:tabular-nums}
   .bar{height:7px;border-radius:var(--r-xs);background:#0c0e12;margin-top:6px;overflow:hidden}
   /* Fortschrittsbalken wachsen ueber transform statt ueber width. Eine Breiten-
@@ -572,6 +569,13 @@
      das Verlaufsband deckt bewusst nur ~14 Wochen ab, und die Jahresuebersicht
      bricht in zwei bzw. vier Spalten um. Alles passt damit auf jede Breite. */
   .cal-wrap{padding:14px 26px 40px;max-width:1040px}
+  /* Ein Hauch Loop-Farbe hinter dem Kalender: von oben weich auslaufend, damit jeder
+     Loop seine eigene Stimmung hat. Als Hintergrund der Flaeche selbst (keine feste
+     Ebene) -- er scrollt mit dem Inhalt und kostet beim Wischen nichts. --loop
+     setzt der Aufbau (renderCalendar). */
+  .cal-wrap{
+    background:radial-gradient(ellipse 100% 420px at 50% 0, color-mix(in srgb, var(--loop, transparent) 11%, transparent), transparent 78%);
+  }
   .cal-mode{margin-bottom:16px}
 
   /* ---------- Ausgenommene Tage ----------
@@ -1317,17 +1321,18 @@
   /* Ist das Ziel erreicht, laeuft der Ring aus der Feier in Abstaenden immer
      wieder -- dasselbe kraeftige Zeichen wie beim ersten Erreichen, nicht nur
      einmal. Eine einzige CSS-Dauerschleife statt eines JS-Timers: die ersten
-     17,6 % der 10 s spielen exakt die Kurve von "zielRing", der Rest der Zeit
+     25,7 % der 7 s (= 1,8 s, Torben 19.11.; vorher 10 s Takt) spielen die Kurve
+     von "zielRing", der Rest der Zeit
      steht sie bei Deckkraft 0 -- dadurch pausiert sie von selbst im
      Hintergrund-Tab, ganz ohne sichtbarkeits Pruefung im Skript.
      :not(.feiert) laesst der einmaligen Feier beim ersten Erreichen den
      Vortritt, statt gleichzeitig mitzulaufen. */
   body.glanz:not(.feiert) .goal-wrap.erreicht .ziel-ring{
-    animation:zielRingSchleife 10000ms linear infinite;
+    animation:zielRingSchleife 7000ms linear infinite;
   }
   @keyframes zielRingSchleife{
     0%{opacity:.9;transform:scale(.35);animation-timing-function:cubic-bezier(.25,.5,.4,1)}
-    17.6%{opacity:0;transform:scale(3.4)}
+    25.7%{opacity:0;transform:scale(3.4)}
     100%{opacity:0;transform:scale(3.4)}
   }
   /* Waehrend der Feier hat die einmalige Welle Vorrang. */
@@ -2813,8 +2818,10 @@
 
   // ---------- Rendering ----------
   const FERTIG_PILL = '<span class="fertig-pill" title="Ziel erreicht">'+ICONS.check+'Geschafft</span>';
-  // Takt der Plakettenringe: vier Plaetze im Abstand von 2,5 s, danach wieder von vorn.
-  function fertigTakt(nr){ return (-(nr % 4) * 2500)+"ms"; }
+  // Takt der Plakettenringe: Die Ringe laufen mit 0,7 s Abstand nacheinander an
+  // (von oben nach unten), vier Plaetze, danach wieder von vorn. Der Zyklus
+  // selbst dauert 7 s; bei 1,8 s Sichtbarkeit ruht danach alles ein paar Sekunden.
+  function fertigTakt(nr){ return ((nr % 4) * 700)+"ms"; }
   function renderSidebar(){
     const list = document.getElementById("habitList");
     // FLIP "First": Positionen der bestehenden Karten vor dem Neuaufbau merken
@@ -3420,7 +3427,7 @@
 
     const voll = skipVoll(h);
 
-    html += '<div class="cal-wrap">'+
+    html += '<div class="cal-wrap" style="--loop:'+h.color+'">'+
       '<div class="skip-row" style="margin-bottom:16px">'+
         '<div class="seg mini cal-mode" id="calModeSwitch" style="margin-bottom:0"><span class="seg-thumb"></span>'+
           '<button data-mode="month"'+(calMode==="month"?' class="sel"':'')+'>Monat</button>'+
